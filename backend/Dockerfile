@@ -24,10 +24,11 @@ WORKDIR /app
 COPY requirements.txt ./
 
 # Install Python dependencies with verbose output for debugging
-RUN pip install --upgrade pip && \
-    echo "=== Installing Python packages ===" && \
-    pip install --no-cache-dir --verbose -r requirements.txt && \
-    echo "=== Installation completed ==="
+RUN echo "=== Upgrading pip ==="
+RUN pip install --upgrade pip
+RUN echo "=== Installing Python packages ==="
+RUN pip install --no-cache-dir --verbose -r requirements.txt
+RUN echo "=== Installation completed ==="
 
 # Stage 2: Production stage
 FROM python:3.11-slim as production
@@ -46,8 +47,8 @@ RUN apt-get update && apt-get install -y \
 
 # Set work directory and create necessary directories
 WORKDIR /app
-RUN mkdir -p /app/logs /app/uploads && \
-    chown -R aialchemy:aialchemy /app
+RUN mkdir -p /app/logs /app/uploads
+RUN chown -R aialchemy:aialchemy /app
 
 # Copy installed packages from builder stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
@@ -59,7 +60,8 @@ COPY --chown=aialchemy:aialchemy . .
 # Copy startup script
 COPY startup.sh /app/startup.sh
 
-RUN chmod +x /app/startup.sh && chown aialchemy:aialchemy /app/startup.sh
+RUN chmod +x /app/startup.sh
+RUN chown aialchemy:aialchemy /app/startup.sh
 
 # Switch to non-root user
 USER aialchemy

@@ -11,10 +11,14 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies step by step for better debugging
+RUN echo "=== Checking versions ==="
 RUN npm --version
 RUN node --version
+RUN echo "=== Installing npm dependencies ==="
 RUN npm install --legacy-peer-deps
+RUN echo "=== Cleaning npm cache ==="
 RUN npm cache clean --force
+RUN echo "=== Dependencies installation completed ==="
 
 # Copy source code
 COPY . .
@@ -24,9 +28,9 @@ ENV NODE_ENV=production
 ENV GENERATE_SOURCEMAP=false
 ENV REACT_APP_VERSION=$REACT_APP_VERSION
 
-RUN echo "=== Building React application ===" && \
-    npm run build && \
-    echo "=== Build completed successfully ==="
+RUN echo "=== Building React application ==="
+RUN npm run build
+RUN echo "=== Build completed successfully ==="
 
 # Stage 2: Production stage with nginx
 FROM nginx:alpine as production
