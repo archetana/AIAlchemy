@@ -15,7 +15,9 @@ RUN echo "=== Checking versions ==="
 RUN npm --version
 RUN node --version
 RUN echo "=== Installing npm dependencies ==="
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps --force
+RUN echo "=== Fixing ajv dependency conflict ==="
+RUN npm install ajv@^8.12.0 --save --legacy-peer-deps
 RUN echo "=== Cleaning npm cache ==="
 RUN npm cache clean --force
 RUN echo "=== Dependencies installation completed ==="
