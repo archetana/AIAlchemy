@@ -21,9 +21,13 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt requirements-prod.txt ./
+COPY requirements.txt ./
+
+# Install Python dependencies with verbose output for debugging
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements-prod.txt
+    echo "=== Installing Python packages ===" && \
+    pip install --no-cache-dir --verbose -r requirements.txt && \
+    echo "=== Installation completed ==="
 
 # Stage 2: Production stage
 FROM python:3.11-slim as production

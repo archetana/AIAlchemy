@@ -105,6 +105,17 @@
 - **Status**: Docker builds ready for CI/CD deployment
 - **Next**: Configure GitHub secrets and deploy to Google Cloud
 
+### 2025-01-20 - Pip Dependencies Fix
+- **Fixed**: Pip installation failures (exit code 1) in Docker build
+- **Removed**: Duplicate python-multipart dependency that caused conflicts
+- **Simplified**: Reduced requirements.txt to essential packages for initial deployment
+- **Updated**: Package versions to resolve compatibility issues
+- **Created**: requirements-full.txt backup with all original dependencies
+- **Modified**: Dockerfile to install requirements.txt directly (not requirements-prod.txt)
+- **Added**: Verbose pip installation output for better debugging
+- **Status**: Docker build dependencies optimized and ready for deployment
+- **Next**: Test deployment with simplified requirements, add back packages gradually if needed
+
 ## Technical Requirements for GCP CI/CD
 
 ### Google Cloud Services Required

@@ -1,0 +1,66 @@
+# Full requirements set (backup of original comprehensive requirements)
+# Use this after initial deployment is working
+
+# Core FastAPI Dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.2
+pydantic-settings==2.1.0
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.13.1
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+
+# Cache & Sessions
+redis==5.0.1
+python-multipart==0.0.6
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Google Cloud Services (full set)
+google-cloud-aiplatform==1.38.1
+google-cloud-documentai==2.20.1
+google-cloud-speech==2.21.0
+google-cloud-dialogflow-cx==1.19.1
+google-cloud-bigquery==3.13.0
+google-cloud-storage==2.10.0
+google-cloud-secret-manager==2.16.4
+google-cloud-sql-connector==1.4.3
+google-generativeai==0.3.2
+
+# HTTP Clients & External APIs
+httpx==0.25.2
+aiohttp==3.9.3
+requests==2.31.0
+
+# Task Queue
+celery[redis]==5.3.4
+
+# Utilities
+python-dotenv==1.0.0
+loguru==0.7.2
+structlog==23.2.0
+rich==13.7.0
+
+# File Processing
+PyPDF2==3.0.1
+python-docx==1.1.0
+Pillow==10.2.0
+openpyxl==3.1.2
+
+# Date & Time
+python-dateutil==2.8.2
+
+# Validation & Serialization
+marshmallow==3.20.1
+email-validator==2.1.0
+
+# Monitoring & Observability
+prometheus-client==0.19.0
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+opentelemetry-exporter-gcp-monitoring==1.6.0
