@@ -52,29 +52,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY --chown=aialchemy:aialchemy . .
 
-# Create startup script
-RUN cat > /app/startup.sh << 'EOF'
-#!/bin/bash
-set -e
-
-echo "🚀 Starting AIAlchemy Backend"
-
-# Run database migrations
-if [[ "$ENVIRONMENT" == "production" || "$ENVIRONMENT" == "staging" ]]; then
-    echo "📊 Running database migrations"
-    alembic upgrade head
-fi
-
-# Start the FastAPI application
-echo "🌟 Starting FastAPI server"
-exec uvicorn app.main:app \
-    --host 0.0.0.0 \
-    --port ${PORT:-8000} \
-    --workers ${WORKERS:-1} \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --access-log \
-    --log-level info
-EOF
+# Copy startup script
+COPY startup.sh /app/startup.sh
 
 RUN chmod +x /app/startup.sh && chown aialchemy:aialchemy /app/startup.sh
 
