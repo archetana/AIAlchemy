@@ -1,1 +1,1 @@
-# Core modules for AIAlchemy backend
+# Core module init

@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt ./
+COPY requirements-minimal.txt requirements.txt
 
 # Install Python dependencies with verbose output for debugging
 RUN echo "=== Upgrading pip ==="
