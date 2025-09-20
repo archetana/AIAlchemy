@@ -622,7 +622,7 @@ AIAlchemy/
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/your-username/AIAlchemy.git
+git clone https://github.com/archetana/AIAlchemy.git
 cd AIAlchemy
 ```
 
@@ -1553,26 +1553,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
-
----
-
-## 📞 Support & Contact
-
-### For Hackathon Judges
-- **Demo Request**: [Schedule Demo](https://calendly.com/AIAlchemy-demo)
-- **Technical Questions**: [technical@AIAlchemy.com](mailto:technical@AIAlchemy.com)
-- **GitHub Issues**: [Create Issue](https://github.com/your-username/AIAlchemy/issues/new)
-
-### For Contributors
-- **Discord Community**: [Join Discord](https://discord.gg/AIAlchemy)
-- **Slack Workspace**: [Join Slack](https://AIAlchemy.slack.com)
-- **Developer Forum**: [Visit Forum](https://forum.AIAlchemy.com)
-
-### For Potential Users
-- **Product Demo**: [Book Demo](https://AIAlchemy.com/demo)
-- **Sales Inquiry**: [sales@AIAlchemy.com](mailto:sales@AIAlchemy.com)
-- **Partnership**: [partnerships@AIAlchemy.com](mailto:partnerships@AIAlchemy.com)
-
 ---
 
 **Built with ❤️ for the Google Cloud GenAI Exchange Hackathon 2025**
