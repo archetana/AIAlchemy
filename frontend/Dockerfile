@@ -1,8 +1,8 @@
 # Multi-stage Dockerfile for React frontend
 # Optimized for production deployment on Google Cloud Run with nginx
 
-# Stage 1: Build stage
-FROM node:18-alpine as builder
+# Stage 1: Build stage - using Node 16 LTS for better compatibility
+FROM node:16-alpine as builder
 
 # Set working directory
 WORKDIR /app
@@ -10,13 +10,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with better error handling
-RUN echo "=== Installing npm dependencies ===" && \
-    npm --version && \
-    node --version && \
-    npm install --silent --no-audit --no-fund && \
-    echo "=== Dependencies installed successfully ===" && \
-    npm cache clean --force
+# Install dependencies step by step for better debugging
+RUN npm --version
+RUN node --version
+RUN npm install --legacy-peer-deps
+RUN npm cache clean --force
 
 # Copy source code
 COPY . .

@@ -1,0 +1,30 @@
+# Simple Dockerfile for debugging npm issues
+FROM node:18-alpine as builder
+
+WORKDIR /app
+
+# Copy minimal package.json first
+COPY package-minimal.json package.json
+
+# Try basic npm install with no extra flags
+RUN npm install
+
+# Copy a basic React app structure
+COPY . .
+
+# Build
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine as production
+
+RUN apk --no-cache add curl
+
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Simple nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 8080
+
+CMD ["nginx", "-g", "daemon off;"]
