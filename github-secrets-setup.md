@@ -67,10 +67,35 @@ Value: (entire contents of github-actions-key.json file)
 cat github-actions-key.json
 ```
 
-#### Secret 3: GCP_APP_SA_KEY (for runtime)
+#### Secret 3: GCP_APP_SA_KEY (for application runtime - IMPORTANT)
+```bash
+# Create application service account first
+export APP_SA_EMAIL="aialchemy-app-sa@$PROJECT_ID.iam.gserviceaccount.com"
+
+gcloud iam service-accounts create aialchemy-app-sa \
+    --description="AIAlchemy app runtime" \
+    --display-name="AIAlchemy App SA"
+
+# Grant necessary permissions
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$APP_SA_EMAIL" \
+    --role="roles/cloudsql.client"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$APP_SA_EMAIL" \
+    --role="roles/secretmanager.secretAccessor"
+
+# Create key
+gcloud iam service-accounts keys create aialchemy-app-key.json \
+    --iam-account=$APP_SA_EMAIL
+
+# Display key content to copy
+cat aialchemy-app-key.json
+```
+
 ```
 Name: GCP_APP_SA_KEY  
-Value: (service account key for app runtime - optional for now)
+Value: (entire contents of aialchemy-app-key.json file above)
 ```
 
 ### Step 3: Verify Secrets Are Added
