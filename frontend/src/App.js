@@ -7,6 +7,7 @@ import { CssBaseline, Box } from '@mui/material';
 import TopNavigation from './components/Navigation/TopNavigation';
 import Dashboard from './components/Dashboard/Dashboard';
 import Pipeline from './components/Pipeline/Pipeline';
+import InvestmentMemo from './components/Memo/InvestmentMemo';
 
 // Create Material-UI theme
 const theme = createTheme({
@@ -95,6 +96,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/pipeline" element={<Pipeline />} />
+              <Route path="/memo/:applicationId" element={<InvestmentMemo />} />
               {/* Future routes */}
               {/* <Route path="/upload" element={<Upload />} /> */}
               {/* <Route path="/memos" element={<Memos />} /> */}

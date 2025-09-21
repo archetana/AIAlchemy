@@ -231,7 +231,7 @@ const ApplicationCard = ({ application, stageColor, onViewApplication }) => {
           <ListItemIcon>
             <VisibilityIcon fontSize="small" />
           </ListItemIcon>
-          View Details
+          View Investment Memo
         </MenuItem>
         <MenuItem onClick={(e) => { handleMenuClose(e); console.log('Edit', application.id); }}>
           <ListItemIcon>

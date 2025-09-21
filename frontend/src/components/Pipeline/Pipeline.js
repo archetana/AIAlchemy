@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Grid,
@@ -40,6 +41,8 @@ import PipelineStats from './PipelineStats';
 import { pipelineApi, startupsApi, apiUtils } from '../../services/api';
 
 const Pipeline = () => {
+  const navigate = useNavigate();
+  
   // State management
   const [pipelineData, setPipelineData] = useState(null);
   const [applications, setApplications] = useState([]);
@@ -236,8 +239,7 @@ const Pipeline = () => {
 
   // Handle view application details
   const handleViewApplication = (applicationId) => {
-    console.log('View application:', applicationId);
-    // TODO: Navigate to application detail view or open modal
+    navigate(`/memo/${applicationId}`);
   };
 
   // Close error snackbar
