@@ -1,98 +1,96 @@
 import React from 'react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { CssBaseline, Box } from '@mui/material';
+import Dashboard from './components/Dashboard/Dashboard';
+
+// Create Material-UI theme
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#2563eb',
+      light: '#3b82f6',
+      dark: '#1d4ed8',
+    },
+    secondary: {
+      main: '#8b5cf6',
+      light: '#a78bfa',
+      dark: '#7c3aed',
+    },
+    success: {
+      main: '#059669',
+      light: '#10b981',
+      dark: '#047857',
+    },
+    warning: {
+      main: '#f59e0b',
+      light: '#fbbf24',
+      dark: '#d97706',
+    },
+    error: {
+      main: '#ef4444',
+      light: '#f87171',
+      dark: '#dc2626',
+    },
+    background: {
+      default: '#f8fafc',
+      paper: '#ffffff',
+    },
+  },
+  typography: {
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    h4: {
+      fontWeight: 700,
+    },
+    h5: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 600,
+    },
+  },
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          textTransform: 'none',
+          fontWeight: 500,
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+  },
+});
 
 function App() {
   return (
-    <div style={{ 
-      padding: '20px', 
-      fontFamily: 'Arial, sans-serif',
-      maxWidth: '800px',
-      margin: '0 auto'
-    }}>
-      <header style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h1 style={{ color: '#2563eb', marginBottom: '10px' }}>
-          🚀 AIAlchemy
-        </h1>
-        <p style={{ color: '#6b7280', fontSize: '18px' }}>
-          AI-Powered Startup Evaluation Platform
-        </p>
-      </header>
-      
-      <div style={{ 
-        display: 'grid', 
-        gap: '20px', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        marginBottom: '30px'
-      }}>
-        <div style={{ 
-          padding: '20px', 
-          backgroundColor: '#f0fdf4', 
-          borderRadius: '8px',
-          border: '1px solid #bbf7d0'
-        }}>
-          <h3 style={{ color: '#166534', marginTop: '0' }}>✅ Deployment Status</h3>
-          <p>✅ Frontend: Running on Cloud Run</p>
-          <p>✅ Backend: API operational</p>
-          <p>✅ CI/CD: GitHub Actions working</p>
-          <p>✅ Infrastructure: Ready for scale</p>
-        </div>
-
-        <div style={{ 
-          padding: '20px', 
-          backgroundColor: '#fefce8', 
-          borderRadius: '8px',
-          border: '1px solid #fde047'
-        }}>
-          <h3 style={{ color: '#a16207', marginTop: '0' }}>🛠️ Development Ready</h3>
-          <p>📦 Clean codebase prepared</p>
-          <p>🔄 Hot reload configured</p>
-          <p>📊 Monitoring setup ready</p>
-          <p>🚀 Ready for rapid development</p>
-        </div>
-      </div>
-      
-      <div style={{ 
-        padding: '25px', 
-        backgroundColor: '#f8fafc', 
-        borderRadius: '8px',
-        border: '1px solid #e2e8f0'
-      }}>
-        <h3 style={{ color: '#334155', marginTop: '0' }}>🎯 Ready to Build Amazing Features</h3>
-        <p style={{ marginBottom: '20px' }}>
-          The foundation is solid. Time to create the AI-powered startup evaluation platform!
-        </p>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        {/* Header/Navigation would go here */}
         
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ 
-            padding: '5px 12px', 
-            backgroundColor: '#dbeafe', 
-            color: '#1e40af',
-            borderRadius: '20px',
-            fontSize: '14px'
-          }}>Material-UI Ready</span>
-          <span style={{ 
-            padding: '5px 12px', 
-            backgroundColor: '#dcfce7', 
-            color: '#166534',
-            borderRadius: '20px',
-            fontSize: '14px'
-          }}>FastAPI Backend</span>
-          <span style={{ 
-            padding: '5px 12px', 
-            backgroundColor: '#fef3c7', 
-            color: '#a16207',
-            borderRadius: '20px',
-            fontSize: '14px'
-          }}>Cloud Deployed</span>
-          <span style={{ 
-            padding: '5px 12px', 
-            backgroundColor: '#f3e8ff', 
-            color: '#7c3aed',
-            borderRadius: '20px',
-            fontSize: '14px'
-          }}>AI Ready</span>
-        </div>
-      </div>
-    </div>
+        {/* Main Content */}
+        <Box component="main" sx={{ flexGrow: 1 }}>
+          <Dashboard />
+        </Box>
+        
+        {/* Footer would go here */}
+      </Box>
+    </ThemeProvider>
   );
 }
 
