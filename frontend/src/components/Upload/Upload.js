@@ -59,7 +59,7 @@ import {
 } from '@mui/icons-material';
 
 // Services
-import { uploadsApi, startupsApi, apiUtils } from '../../services/api';
+import { uploadsApi, startupsApi, settingsApi, apiUtils } from '../../services/api';
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -70,10 +70,10 @@ const Upload = () => {
   
   // Form data state
   const [formData, setFormData] = useState({
-    // Company Information
+    // Company Information (matching backend API structure)
     company_name: '',
     website: '',
-    industry: '',
+    industry_id: '', // Changed to industry_id to match backend
     funding_stage: '',
     funding_amount_requested: '',
     description: '',
@@ -107,6 +107,9 @@ const Upload = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  
+  // Dynamic data from backend
+  const [industries, setIndustries] = useState([]);
 
   // Stepper configuration
   const steps = [
@@ -142,12 +145,44 @@ const Upload = () => {
     'audio/wav': 'WAV Audio',
   };
 
-  // Industry options
-  const industries = [
-    'AI/ML', 'FinTech', 'HealthTech', 'EdTech', 'E-commerce', 'Enterprise SaaS',
-    'Consumer Apps', 'IoT', 'Blockchain/Crypto', 'CleanTech', 'Biotech', 
-    'Manufacturing', 'Transportation', 'Real Estate', 'Food & Beverage', 'Other'
-  ];
+  // Load industries on component mount
+  useEffect(() => {
+    const loadIndustries = async () => {
+      try {
+        const response = await settingsApi.getIndustries();
+        if (response.data && Array.isArray(response.data)) {
+          setIndustries(response.data);
+        } else {
+          // Fallback industries if API fails
+          setIndustries([
+            { id: 1, name: 'AI/ML' },
+            { id: 2, name: 'FinTech' },
+            { id: 3, name: 'HealthTech' },
+            { id: 4, name: 'EdTech' },
+            { id: 5, name: 'E-commerce' },
+            { id: 6, name: 'Enterprise SaaS' },
+            { id: 7, name: 'Consumer Apps' },
+            { id: 8, name: 'Other' }
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to load industries:', err);
+        // Use fallback data
+        setIndustries([
+          { id: 1, name: 'AI/ML' },
+          { id: 2, name: 'FinTech' },
+          { id: 3, name: 'HealthTech' },
+          { id: 4, name: 'EdTech' },
+          { id: 5, name: 'E-commerce' },
+          { id: 6, name: 'Enterprise SaaS' },
+          { id: 7, name: 'Consumer Apps' },
+          { id: 8, name: 'Other' }
+        ]);
+      }
+    };
+    
+    loadIndustries();
+  }, []);
 
   // Funding stage options
   const fundingStages = [
@@ -310,22 +345,61 @@ const Upload = () => {
     try {
       setLoading(true);
       
-      // Create startup application
+      // Prepare startup application data matching backend API structure
       const applicationData = {
-        ...formData,
-        funding_amount_requested: parseFloat(formData.funding_amount_requested) || 0,
-        current_arr: parseFloat(formData.current_arr) || 0,
-        runway_months: parseInt(formData.runway_months) || 0,
-        team_size: parseInt(formData.team_size) || 0,
+        // Required fields
+        company_name: formData.company_name,
+        contact_email: formData.contact_email,
+        contact_name: formData.contact_name,
+        
+        // Optional fields
+        website: formData.website || null,
+        industry_id: parseInt(formData.industry_id),
+        funding_stage: formData.funding_stage,
+        funding_amount_requested: parseFloat(formData.funding_amount_requested) || null,
+        description: formData.description || null,
+        
+        // Contact details
+        contact_phone: formData.contact_phone || null,
+        contact_title: formData.contact_title || null,
+        
+        // Additional information
         founded_year: parseInt(formData.founded_year),
-        file_ids: files
-          .filter(f => f.status === 'uploaded')
-          .map(f => f.uploadData.id),
+        team_size: parseInt(formData.team_size) || null,
+        current_arr: parseFloat(formData.current_arr) || null,
+        runway_months: parseInt(formData.runway_months) || null,
       };
+      
+      console.log('Submitting application data:', applicationData);
       
       const response = await startupsApi.createStartup(applicationData);
       
       if (response.data) {
+        const startupId = response.data.id;
+        
+        // If files were uploaded, associate them with the startup
+        const uploadedFiles = files.filter(f => f.status === 'uploaded');
+        if (uploadedFiles.length > 0) {
+          try {
+            // Group files by type and upload them
+            const filesByType = uploadedFiles.reduce((acc, fileData) => {
+              const fileType = getFileType(fileData.type);
+              if (!acc[fileType]) acc[fileType] = [];
+              acc[fileType].push(fileData.file);
+              return acc;
+            }, {});
+            
+            // Upload files by type
+            for (const [fileType, fileList] of Object.entries(filesByType)) {
+              await uploadsApi.uploadFiles(startupId, fileType, fileList);
+            }
+          } catch (fileError) {
+            console.error('File upload error:', fileError);
+            // Don't fail the whole process for file upload errors
+            setError('Application created successfully, but some files failed to upload.');
+          }
+        }
+        
         setSuccess('Application submitted successfully! Redirecting to pipeline...');
         setTimeout(() => {
           navigate('/pipeline');
@@ -344,7 +418,7 @@ const Upload = () => {
   const isStepValid = (step) => {
     switch (step) {
       case 0:
-        return formData.company_name && formData.contact_name && formData.contact_email;
+        return formData.company_name && formData.contact_name && formData.contact_email && formData.industry_id;
       case 1:
         return files.length > 0;
       case 2:
@@ -449,14 +523,14 @@ const Upload = () => {
                     <TextField
                       select
                       label="Industry"
-                      value={formData.industry}
-                      onChange={(e) => updateFormData('industry', e.target.value)}
+                      value={formData.industry_id}
+                      onChange={(e) => updateFormData('industry_id', e.target.value)}
                       fullWidth
                       required
                     >
                       {industries.map(industry => (
-                        <MenuItem key={industry} value={industry}>
-                          {industry}
+                        <MenuItem key={industry.id} value={industry.id}>
+                          {industry.name}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -802,7 +876,7 @@ const Upload = () => {
                         Company Details
                       </Typography>
                       <Typography variant="body2"><strong>Name:</strong> {formData.company_name}</Typography>
-                      <Typography variant="body2"><strong>Industry:</strong> {formData.industry}</Typography>
+                      <Typography variant="body2"><strong>Industry:</strong> {industries.find(i => i.id === parseInt(formData.industry_id))?.name || 'Not selected'}</Typography>
                       <Typography variant="body2"><strong>Stage:</strong> {formData.funding_stage}</Typography>
                       <Typography variant="body2"><strong>Contact:</strong> {formData.contact_name} ({formData.contact_email})</Typography>
                     </Paper>

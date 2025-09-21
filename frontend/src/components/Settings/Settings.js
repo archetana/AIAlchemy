@@ -150,17 +150,55 @@ const Settings = () => {
     try {
       setLoading(true);
       
-      const [settingsResponse, teamResponse] = await Promise.all([
-        settingsApi.getSettings().catch(() => ({ data: null })),
+      const [preferencesResponse, investmentWeightsResponse, teamResponse] = await Promise.all([
+        settingsApi.getPreferences().catch(() => ({ data: null })),
+        settingsApi.getInvestmentWeights().catch(() => ({ data: null })),
         usersApi.getTeamMembers().catch(() => ({ data: [] }))
       ]);
       
-      if (settingsResponse.data) {
-        setSettings(prev => ({ ...prev, ...settingsResponse.data }));
+      // Merge preferences into settings
+      if (preferencesResponse.data) {
+        setSettings(prev => ({
+          ...prev,
+          language: preferencesResponse.data.language || prev.language,
+          timezone: preferencesResponse.data.timezone || prev.timezone,
+          theme: preferencesResponse.data.display?.theme || prev.theme,
+          notifications: {
+            ...prev.notifications,
+            ...preferencesResponse.data.notifications
+          }
+        }));
       }
       
-      if (teamResponse.data) {
-        setTeamMembers(Array.isArray(teamResponse.data) ? teamResponse.data : []);
+      // Update AI scoring weights from backend
+      if (investmentWeightsResponse.data) {
+        setSettings(prev => ({
+          ...prev,
+          ai: {
+            ...prev.ai,
+            scoringWeights: {
+              market: investmentWeightsResponse.data.market_size_weight || prev.ai.scoringWeights.market,
+              team: investmentWeightsResponse.data.team_experience_weight || prev.ai.scoringWeights.team,
+              product: investmentWeightsResponse.data.business_model_weight || prev.ai.scoringWeights.product,
+              financials: investmentWeightsResponse.data.financial_health_weight || prev.ai.scoringWeights.financials,
+            }
+          }
+        }));
+      }
+      
+      // Load team members
+      if (teamResponse.data && Array.isArray(teamResponse.data)) {
+        // Map backend user data to frontend format
+        const formattedTeamMembers = teamResponse.data.map(user => ({
+          id: user.id,
+          name: user.full_name || user.name || 'Unknown',
+          email: user.email,
+          role: user.role || 'viewer',
+          avatar: user.avatar_url || null,
+          status: user.is_active ? 'active' : 'inactive',
+          lastActive: user.last_login || user.updated_at,
+        }));
+        setTeamMembers(formattedTeamMembers);
       } else {
         // Fallback team data for development
         setTeamMembers([
@@ -213,7 +251,37 @@ const Settings = () => {
     try {
       setSaving(true);
       
-      await settingsApi.updateSettings(settings);
+      // Prepare preferences data for backend
+      const preferencesData = {
+        language: settings.language,
+        timezone: settings.timezone,
+        display: {
+          theme: settings.theme
+        },
+        notifications: {
+          email_notifications: settings.notifications.email,
+          desktop_notifications: settings.notifications.push,
+          new_applications: settings.notifications.newApplications,
+          memo_approvals: settings.notifications.memoApprovals,
+          system_updates: settings.notifications.systemUpdates
+        }
+      };
+      
+      // Prepare investment weights data
+      const weightsData = {
+        market_size_weight: settings.ai.scoringWeights.market,
+        team_experience_weight: settings.ai.scoringWeights.team,
+        business_model_weight: settings.ai.scoringWeights.product,
+        financial_health_weight: settings.ai.scoringWeights.financials,
+        traction_weight: 100 - (settings.ai.scoringWeights.market + settings.ai.scoringWeights.team + settings.ai.scoringWeights.product + settings.ai.scoringWeights.financials)
+      };
+      
+      // Save both preferences and investment weights
+      await Promise.all([
+        settingsApi.updatePreferences(preferencesData),
+        settingsApi.updateInvestmentWeights(weightsData)
+      ]);
+      
       setSuccess('Settings saved successfully');
       
     } catch (err) {

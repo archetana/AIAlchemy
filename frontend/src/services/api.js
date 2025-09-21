@@ -106,6 +106,14 @@ export const settingsApi = {
   getInvestmentWeights: () => api.get('/api/settings/investment-weights'),
   updateInvestmentWeights: (data) => api.put('/api/settings/investment-weights', data),
   
+  // Account preferences  
+  getPreferences: () => api.get('/api/settings/account/preferences'),
+  updatePreferences: (data) => api.put('/api/settings/account/preferences', data),
+  
+  // System configuration
+  getSettings: () => api.get('/api/settings/account/preferences'), // Fallback to preferences
+  updateSettings: (data) => api.put('/api/settings/account/preferences', data),
+  
   // System info
   getSystemInfo: () => api.get('/api/settings/system/info'),
   getIndustries: () => api.get('/api/settings/industries'),
@@ -133,6 +141,21 @@ export const memosApi = {
   getStats: () => api.get('/api/memos/stats/summary'),
 };
 
+// Users/Team Management API calls
+export const usersApi = {
+  // Get team members
+  getTeamMembers: () => api.get('/api/settings/users'),
+  
+  // Invite new user
+  inviteUser: (userData) => api.post('/api/settings/users/invite', userData),
+  
+  // Remove user
+  removeUser: (userId) => api.delete(`/api/settings/users/${userId}`),
+  
+  // Update user role
+  updateUserRole: (userId, role) => api.put(`/api/settings/users/${userId}/role`, { role }),
+};
+
 // File Upload API calls
 export const uploadsApi = {
   // Upload files for startup
@@ -143,6 +166,14 @@ export const uploadsApi = {
     
     return api.post(`/api/uploads/startup/${startupId}/files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  
+  // Upload single file (for use during application creation)
+  uploadFile: (formData, onUploadProgress) => {
+    return api.post('/api/uploads/files', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress
     });
   },
   
