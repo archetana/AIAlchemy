@@ -8,6 +8,8 @@ import TopNavigation from './components/Navigation/TopNavigation';
 import Dashboard from './components/Dashboard/Dashboard';
 import Pipeline from './components/Pipeline/Pipeline';
 import InvestmentMemo from './components/Memo/InvestmentMemo';
+import Upload from './components/Upload/Upload';
+import Settings from './components/Settings/Settings';
 
 // Create Material-UI theme
 const theme = createTheme({
@@ -97,10 +99,10 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/pipeline" element={<Pipeline />} />
               <Route path="/memo/:applicationId" element={<InvestmentMemo />} />
+              <Route path="/upload" element={<Upload />} />
+              <Route path="/settings" element={<Settings />} />
               {/* Future routes */}
-              {/* <Route path="/upload" element={<Upload />} /> */}
               {/* <Route path="/memos" element={<Memos />} /> */}
-              {/* <Route path="/settings" element={<Settings />} /> */}
             </Routes>
           </Box>
         </Box>
