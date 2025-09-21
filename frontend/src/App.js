@@ -1,7 +1,12 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
+
+// Components
+import TopNavigation from './components/Navigation/TopNavigation';
 import Dashboard from './components/Dashboard/Dashboard';
+import Pipeline from './components/Pipeline/Pipeline';
 
 // Create Material-UI theme
 const theme = createTheme({
@@ -80,16 +85,24 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        {/* Header/Navigation would go here */}
-        
-        {/* Main Content */}
-        <Box component="main" sx={{ flexGrow: 1 }}>
-          <Dashboard />
+      <Router>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+          {/* Top Navigation */}
+          <TopNavigation />
+          
+          {/* Main Content with Routes */}
+          <Box component="main" sx={{ flexGrow: 1 }}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/pipeline" element={<Pipeline />} />
+              {/* Future routes */}
+              {/* <Route path="/upload" element={<Upload />} /> */}
+              {/* <Route path="/memos" element={<Memos />} /> */}
+              {/* <Route path="/settings" element={<Settings />} /> */}
+            </Routes>
+          </Box>
         </Box>
-        
-        {/* Footer would go here */}
-      </Box>
+      </Router>
     </ThemeProvider>
   );
 }
