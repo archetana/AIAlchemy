@@ -12,3 +12,33 @@ INFO:     127.0.0.1:38036 - "GET /api/startups/?page=1&page_size=5 HTTP/1.1" 500
 INFO:     127.0.0.1:38036 - "GET /api/settings/investment-weights HTTP/1.1" 200 OK
 INFO:     127.0.0.1:38036 - "GET /api/startups/1 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60852 - "GET /api/startups/?page=1&page_size=2 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:39786 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32944 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32948 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32958 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32964 - "GET /api/dashboard/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32968 - "GET /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32978 - "GET /api/startups/?page=1&page_size=3 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:32986 - "GET /api/startups/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33002 - "GET /api/startups/?status=ai_analysis HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:33014 - "GET /api/startups/search/suggestions?query=Tech HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:33030 - "GET /api/startups/status/new/count HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:33042 - "GET /api/pipeline/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33056 - "GET /api/pipeline/stages HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:33068 - "GET /api/pipeline/bottlenecks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33078 - "GET /api/pipeline/throughput?days=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33086 - "GET /api/memos/startup/1 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:33092 - "GET /api/memos/?page_size=5 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:33106 - "GET /api/memos/stats/summary HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:33110 - "GET /api/uploads/startup/1/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33118 - "GET /api/uploads/stats/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33128 - "GET /api/settings/users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33140 - "GET /api/settings/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33152 - "GET /api/settings/industries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33158 - "GET /api/settings/investment-weights HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33160 - "GET /api/settings/account/preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33164 - "GET /api/settings/system/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33176 - "GET /api/dashboard/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33178 - "GET /api/startups/?page_size=2 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:33192 - "GET /api/pipeline/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33198 - "GET /api/settings/investment-weights HTTP/1.1" 200 OK
