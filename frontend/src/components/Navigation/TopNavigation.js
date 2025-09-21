@@ -57,7 +57,7 @@ const TopNavigation = () => {
       value: '/upload', 
       icon: <UploadIcon fontSize="small" />,
       path: '/upload',
-      disabled: true // Will enable when implemented
+      disabled: false // Now implemented
     },
     {
       label: 'Memos',
@@ -71,7 +71,7 @@ const TopNavigation = () => {
       value: '/settings',
       icon: <SettingsIcon fontSize="small" />,
       path: '/settings',
-      disabled: true // Will enable when implemented
+      disabled: false // Now implemented
     },
   ];
 
@@ -274,7 +274,6 @@ const TopNavigation = () => {
               handleMenuClose();
               navigate('/settings');
             }}
-            disabled
           >
             <ListItemIcon>
               <SettingsIcon fontSize="small" />
