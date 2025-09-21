@@ -10,8 +10,9 @@ import sys
 # Add the parent directory to the path to import our modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.config import get_settings
-from app.core.database import Base
+from app.database import Base
+# Import models to ensure they're registered with Base.metadata
+from app.models import *
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -32,9 +33,8 @@ target_metadata = Base.metadata
 # ... etc.
 
 def get_url():
-    """Get database URL from settings."""
-    settings = get_settings()
-    return settings.database_url_sync  # Use sync URL for Alembic
+    """Get database URL from environment."""
+    return os.getenv("DATABASE_URL", "sqlite:///./aialchemy.db")
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -79,8 +79,18 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
+    url = get_url()
+    # Handle different database URLs
+    if url.startswith("sqlite"):
+        # For SQLite, use aiosqlite
+        if "aiosqlite" not in url:
+            url = url.replace("sqlite://", "sqlite+aiosqlite://")
+    elif url.startswith("postgresql"):
+        # For PostgreSQL, use asyncpg
+        url = url.replace("postgresql://", "postgresql+asyncpg://")
+    
     connectable = create_async_engine(
-        get_url().replace("postgresql://", "postgresql+asyncpg://"),
+        url,
         poolclass=pool.NullPool,
     )
 
