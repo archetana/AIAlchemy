@@ -49,7 +49,7 @@ import {
   Person as PersonIcon,
   SmartToy as AIIcon,
   Group as TeamIcon,
-  Integration as IntegrationIcon,
+  Cable as IntegrationIcon,
   Security as SecurityIcon,
   Notifications as NotificationsIcon,
   Palette as ThemeIcon,
