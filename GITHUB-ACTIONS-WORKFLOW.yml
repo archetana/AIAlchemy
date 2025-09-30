@@ -1,0 +1,250 @@
+# Enhanced GitHub Actions Workflow for GCP Deployment with API Gateway
+# This file contains the updated workflow that needs to be manually copied to .github/workflows/deploy.yml
+# due to GitHub App workflow permissions
+
+name: 🚀 Deploy AIAlchemy to GCP with API Gateway
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: us-central1
+  REPOSITORY: aialchemy-repo
+  REGION: us-central1
+  GATEWAY_ID: aialchemy-gateway
+  API_ID: aialchemy-api
+
+jobs:
+  setup-infrastructure:
+    runs-on: ubuntu-latest
+    outputs:
+      gateway-url: ${{ steps.setup-gateway.outputs.gateway-url }}
+      backend-url: ${{ steps.deploy-backend.outputs.backend-url }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Google Auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: 🛠️ Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: 📦 Enable Required APIs
+        run: |
+          gcloud services enable run.googleapis.com
+          gcloud services enable apigateway.googleapis.com
+          gcloud services enable servicemanagement.googleapis.com
+          gcloud services enable servicecontrol.googleapis.com
+          gcloud services enable cloudbuild.googleapis.com
+          gcloud services enable artifactregistry.googleapis.com
+          gcloud services enable sql-component.googleapis.com
+
+      - name: 🗄️ Create Artifact Registry Repository
+        run: |
+          gcloud artifacts repositories create $REPOSITORY \
+            --repository-format=docker \
+            --location=$GAR_LOCATION \
+            --description="AIAlchemy container images" || true
+
+      - name: 🐳 Configure Docker
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: 🏗️ Build and Push Backend
+        run: |
+          cd backend
+          docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/backend:$GITHUB_SHA .
+          docker push us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/backend:$GITHUB_SHA
+
+      - name: 🚀 Deploy Backend to Cloud Run
+        id: deploy-backend
+        run: |
+          gcloud run deploy aialchemy-backend \
+            --image=us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/backend:$GITHUB_SHA \
+            --region=$REGION \
+            --set-env-vars="ENVIRONMENT=production,GOOGLE_CLOUD_PROJECT=$PROJECT_ID" \
+            --memory=2Gi \
+            --cpu=2 \
+            --min-instances=1 \
+            --max-instances=10 \
+            --no-allow-unauthenticated
+          
+          BACKEND_URL=$(gcloud run services describe aialchemy-backend --region=$REGION --format='value(status.url)')
+          echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "🚀 Backend deployed at: $BACKEND_URL"
+
+      - name: 📄 Create API Gateway Configuration
+        run: |
+          cat > api-gateway-config.yaml << 'EOF'
+          swagger: '2.0'
+          info:
+            title: AIAlchemy API Gateway
+            description: API Gateway for AIAlchemy platform
+            version: 1.0.0
+          produces:
+            - application/json
+          schemes:
+            - https
+          paths:
+            /api/**:
+              x-google-backend:
+                address: ${{ steps.deploy-backend.outputs.backend-url }}
+                deadline: 300.0
+              get:
+                summary: API GET requests
+                operationId: api-get
+                responses:
+                  200:
+                    description: Success
+              post:
+                summary: API POST requests
+                operationId: api-post
+                responses:
+                  200:
+                    description: Success
+              put:
+                summary: API PUT requests
+                operationId: api-put
+                responses:
+                  200:
+                    description: Success
+              delete:
+                summary: API DELETE requests
+                operationId: api-delete
+                responses:
+                  200:
+                    description: Success
+            /health:
+              x-google-backend:
+                address: ${{ steps.deploy-backend.outputs.backend-url }}
+              get:
+                summary: Health check
+                operationId: health-check
+                responses:
+                  200:
+                    description: Healthy
+            /**:
+              x-google-backend:
+                address: ${{ steps.deploy-backend.outputs.backend-url }}
+              get:
+                summary: Catch-all for other requests
+                operationId: catch-all
+                responses:
+                  200:
+                    description: Success
+          EOF
+          
+          # Replace backend URL in config
+          sed -i "s|\${{ steps.deploy-backend.outputs.backend-url }}|${{ steps.deploy-backend.outputs.backend-url }}|g" api-gateway-config.yaml
+
+      - name: 🌐 Create API Gateway
+        id: setup-gateway
+        run: |
+          # Create API Config
+          gcloud api-gateway api-configs create aialchemy-config-$GITHUB_SHA \
+            --api=$API_ID \
+            --openapi-spec=api-gateway-config.yaml \
+            --project=$PROJECT_ID || \
+          gcloud api-gateway apis create $API_ID \
+            --project=$PROJECT_ID && \
+          gcloud api-gateway api-configs create aialchemy-config-$GITHUB_SHA \
+            --api=$API_ID \
+            --openapi-spec=api-gateway-config.yaml \
+            --project=$PROJECT_ID
+          
+          # Create or update gateway
+          gcloud api-gateway gateways create $GATEWAY_ID \
+            --api=$API_ID \
+            --api-config=aialchemy-config-$GITHUB_SHA \
+            --location=$REGION \
+            --project=$PROJECT_ID || \
+          gcloud api-gateway gateways update $GATEWAY_ID \
+            --api=$API_ID \
+            --api-config=aialchemy-config-$GITHUB_SHA \
+            --location=$REGION \
+            --project=$PROJECT_ID
+          
+          # Get gateway URL
+          GATEWAY_URL=$(gcloud api-gateway gateways describe $GATEWAY_ID --location=$REGION --format='value(defaultHostname)')
+          GATEWAY_HTTPS_URL="https://$GATEWAY_URL"
+          echo "gateway-url=$GATEWAY_HTTPS_URL" >> $GITHUB_OUTPUT
+          echo "🌐 API Gateway URL: $GATEWAY_HTTPS_URL"
+
+  deploy-frontend:
+    needs: setup-infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Google Auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: 🛠️ Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: 🐳 Configure Docker
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: ⚙️ Update Frontend Configuration
+        run: |
+          cd frontend
+          # Create environment-aware config (already exists in the codebase)
+          # The frontend/src/config/api.js file handles environment detection automatically
+          
+          # Create production environment file
+          cat > .env.production << EOF
+          REACT_APP_API_URL=${{ needs.setup-infrastructure.outputs.gateway-url }}
+          REACT_APP_NAME=AIAlchemy
+          REACT_APP_VERSION=1.0.0
+          REACT_APP_ENVIRONMENT=production
+          EOF
+
+      - name: 🏭 Build and Push Frontend
+        run: |
+          cd frontend          
+          docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/frontend:$GITHUB_SHA .
+          docker push us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/frontend:$GITHUB_SHA
+
+      - name: 🚀 Deploy Frontend to Cloud Run
+        run: |
+          gcloud run deploy aialchemy-frontend \
+            --image=us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/frontend:$GITHUB_SHA \
+            --region=$REGION \
+            --set-env-vars="REACT_APP_API_URL=${{ needs.setup-infrastructure.outputs.gateway-url }},REACT_APP_ENVIRONMENT=production" \
+            --memory=1Gi \
+            --cpu=1 \
+            --min-instances=1 \
+            --max-instances=5 \
+            --allow-unauthenticated
+
+      - name: 🎉 Deployment Summary
+        run: |
+          FRONTEND_URL=$(gcloud run services describe aialchemy-frontend --region=$REGION --format='value(status.url)')
+          echo "" 
+          echo "🎉 AIAlchemy Deployment Complete!"
+          echo "================================="
+          echo "🌐 Frontend URL: $FRONTEND_URL"
+          echo "🚀 Backend URL:  ${{ needs.setup-infrastructure.outputs.backend-url }}"
+          echo "🌐 API Gateway:  ${{ needs.setup-infrastructure.outputs.gateway-url }}"
+          echo "📚 API Docs:     ${{ needs.setup-infrastructure.outputs.gateway-url }}/docs"
+          echo "💚 Health Check: ${{ needs.setup-infrastructure.outputs.gateway-url }}/health"
+          echo ""
+          echo "🔗 All API calls will be routed through the API Gateway"
+          echo "📱 Frontend automatically detects and uses the gateway URL"
