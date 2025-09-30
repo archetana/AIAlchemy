@@ -4,15 +4,13 @@
  */
 
 import axios from 'axios';
+import { API_CONFIG, ENV_CONFIG, logApiConfig } from '../config/api.js';
 
-// Create axios instance with base configuration
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// Log current API configuration for debugging
+logApiConfig();
+
+// Create axios instance with dynamic configuration
+const api = axios.create(API_CONFIG);
 
 // Request interceptor for adding auth tokens (when implemented)
 api.interceptors.request.use(
@@ -200,6 +198,26 @@ export const apiUtils = {
   
   // Get API status
   getApiStatus: () => api.get('/api/status'),
+  
+  // Get current API configuration
+  getApiConfig: () => ({
+    baseURL: API_CONFIG.baseURL,
+    environment: ENV_CONFIG.environment,
+    isProduction: ENV_CONFIG.isProduction,
+    timeout: API_CONFIG.timeout,
+  }),
+  
+  // Test environment detection
+  testEnvironment: () => {
+    console.log('🧪 Environment Test Results:', {
+      detectedEnv: ENV_CONFIG.environment,
+      hostname: window.location.hostname,
+      apiUrl: API_CONFIG.baseURL,
+      isProduction: ENV_CONFIG.isProduction,
+      isDevelopment: ENV_CONFIG.isDevelopment,
+    });
+    return ENV_CONFIG;
+  },
   
   // Handle API errors
   handleError: (error) => {
