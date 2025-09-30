@@ -53,13 +53,6 @@ const TopNavigation = () => {
       path: '/pipeline'
     },
     {
-      label: 'Upload',
-      value: '/upload', 
-      icon: <UploadIcon fontSize="small" />,
-      path: '/upload',
-      disabled: false // Now implemented
-    },
-    {
       label: 'Memos',
       value: '/memos',
       icon: <MemoIcon fontSize="small" />,
