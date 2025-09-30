@@ -15,6 +15,7 @@ import {
   Paper,
   Breadcrumbs,
   Link,
+  Button,
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -201,6 +202,13 @@ const Dashboard = () => {
                 </Typography>
               )}
             </Box>
+          </Box>
+          <Box display={'flex'} justifyContent={'flex-end'} mt={2}>
+            <Button variant='outlined' color='primary'>
+              <Link href="/applications/new" underline="none">
+                + New Application
+              </Link>
+            </Button>
           </Box>
         </Box>
 

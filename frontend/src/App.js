@@ -99,7 +99,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/pipeline" element={<Pipeline />} />
               <Route path="/memo/:applicationId" element={<InvestmentMemo />} />
-              <Route path="/upload" element={<Upload />} />
+              <Route path="/applications/new" element={<Upload />} />
               <Route path="/settings" element={<Settings />} />
               {/* Future routes */}
               {/* <Route path="/memos" element={<Memos />} /> */}
