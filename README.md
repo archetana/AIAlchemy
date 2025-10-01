@@ -40,6 +40,7 @@ npm start
 - [Development](#-development)
 - [Deployment](#-deployment)
 - [API Documentation](#-api-documentation)
+- [Documentation](#-documentation)
 - [Contributing](#-contributing)
 - [License](#-license)
 
@@ -1338,19 +1339,32 @@ GET /api/v1/analytics/benchmark?sector=SaaS&stage=SeriesA
 Authorization: Bearer {token}
 ```
 
+## 📚 Documentation
+
+For comprehensive documentation, see the [docs](./docs/) directory:
+
+- **[API Documentation](./docs/API-ENDPOINTS.md)** - Complete REST API reference
+- **[Development Guide](./docs/DEVELOPMENT-ROADMAP.md)** - Development roadmap and guidelines
+- **[Deployment Guide](./docs/DEPLOYMENT-STEPS.md)** - Step-by-step deployment instructions
+- **[GCP Integration](./docs/GCP-DEPLOYMENT.md)** - Google Cloud Platform deployment
+- **[Architecture Details](./docs/agents.md)** - AI agent system documentation
+- **[Contributing Guide](./CONTRIBUTING.md)** - How to contribute to the project
+
 ## 🤝 Contributing
 
-### Development Workflow
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for detailed instructions.
+
+### Quick Start for Contributors
 
 1. **Fork the repository**
 2. **Create feature branch**: `git checkout -b feature/amazing-feature`
 3. **Install dependencies**: Follow installation guide
-4. **Make changes**: Implement your feature
-5. **Write tests**: Add comprehensive test coverage
+4. **Setup pre-commit hooks**: `pre-commit install`
+5. **Make changes**: Implement your feature with tests
 6. **Run tests**: `pytest` (backend) and `npm test` (frontend)
-7. **Commit changes**: `git commit -m 'Add amazing feature'`
+7. **Commit changes**: Follow [commit guidelines](./CONTRIBUTING.md#commit-guidelines)
 8. **Push branch**: `git push origin feature/amazing-feature`
-9. **Open Pull Request**: Submit PR with detailed description
+9. **Open Pull Request**: Submit PR using the provided template
 
 ### Code Style Guidelines
 

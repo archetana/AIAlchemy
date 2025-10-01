@@ -62,8 +62,38 @@ coverage.xml
 *.cover
 .hypothesis/
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+backend/aialchemy.db
+backend/*.db
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Google Cloud
+google-cloud-key.json
+service-account-key.json
+.gcp/
+credentials.json
+
+# Jupyter
+.jupyter/
+*.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
 # Environment
 .env
+.env.local
+.env.development
+.env.test
+.env.production
 .venv
 env/
 venv/
