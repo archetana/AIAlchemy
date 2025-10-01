@@ -1,3 +1,12 @@
+# 🔧 Workflow Update Instructions
+
+Due to GitHub permissions, you need to manually update the workflow file.
+
+## 📋 Update `.github/workflows/deploy.yml`
+
+Replace the entire content of `.github/workflows/deploy.yml` with the following:
+
+```yaml
 name: 🚀 Deploy AIAlchemy to GCP
 
 on:
@@ -236,3 +245,31 @@ jobs:
           echo "- **Region**: $REGION" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit SHA**: $GITHUB_SHA" >> $GITHUB_STEP_SUMMARY
           echo "- **Deployed at**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+```
+
+## 🚀 After Updating
+
+You'll be able to use these deployment options:
+
+### Full Deployment with Gateway
+- `deploy_gateway: true`
+- `domain_name: yourdomain.com`  
+- `gateway_only: false`
+
+### Gateway-Only Update
+- `deploy_gateway: true`
+- `domain_name: yourdomain.com`
+- `gateway_only: true`
+
+### No Gateway
+- `deploy_gateway: false`
+
+## 🗑️ Delete This File
+
+After updating the workflow, you can delete this instruction file:
+```bash
+rm UPDATE-WORKFLOW.md
+git add -A
+git commit -m "cleanup: Remove workflow update instructions"
+git push origin main
+```

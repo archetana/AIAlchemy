@@ -1,57 +1,37 @@
-# AIAlchemy Gateway
+# AIAlchemy Cloud Load Balancer Gateway
 
-This directory contains the gateway configuration for routing traffic between the frontend and backend services through a single endpoint.
+This directory contains the Cloud Load Balancer configuration for routing traffic between the frontend and backend services through a single domain endpoint.
 
-## 🌐 Gateway Options
+## 🌐 Gateway Solution
 
-### 1. NGINX Gateway (Recommended for Development/Small Scale)
-
-A containerized NGINX reverse proxy deployed as a Cloud Run service.
-
-**Files:**
-- `Dockerfile` - NGINX container configuration
-- `nginx.conf` - NGINX routing and security configuration  
-- `entrypoint.sh` - Dynamic configuration script
-- `deploy-nginx-gateway.sh` - Deployment script
-
-**Features:**
-- Rate limiting (API: 10 req/s, General: 30 req/s)
-- Static asset caching (1 year)
-- CORS configuration
-- Security headers
-- Health checks
-- Gzip compression
-
-### 2. Cloud Load Balancer (Recommended for Production)
-
-Google Cloud's global load balancer with SSL certificates and CDN.
+**Cloud Load Balancer** - Google-managed global load balancer with SSL certificates and CDN.
 
 **Files:**
 - `load-balancer-setup.sh` - Setup script for load balancer configuration
 
 **Features:**
-- Global CDN
-- Automatic SSL certificate provisioning
-- DDoS protection
+- Global CDN for improved performance
+- Automatic SSL certificate provisioning and renewal
+- DDoS protection and security
 - Multi-region support
 - Google-managed infrastructure
+- URL-based routing
 
 ## 🚀 Quick Deploy
 
-### NGINX Gateway
-```bash
-# From project root
-GATEWAY_TYPE=nginx ./deploy-gcp-with-gateway.sh
+### Via GitHub Actions (Recommended)
+1. Go to **Actions** tab → **"Deploy AIAlchemy to GCP"**
+2. Click **"Run workflow"**
+3. Set options:
+   - `deploy_gateway: true`
+   - `domain_name: yourdomain.com`
+   - `gateway_only: false` (for full deployment)
+4. Click **"Run workflow"**
 
-# Or deploy just the gateway
-cd gateway
-./deploy-nginx-gateway.sh
-```
-
-### Cloud Load Balancer
+### Via Script
 ```bash
 # From project root (requires domain)
-DOMAIN_NAME=yourdomain.com GATEWAY_TYPE=load-balancer ./deploy-gcp-with-gateway.sh
+DOMAIN_NAME=yourdomain.com ./deploy-gcp-with-gateway.sh
 
 # Or setup just the load balancer
 DOMAIN_NAME=yourdomain.com ./gateway/load-balancer-setup.sh
@@ -59,95 +39,137 @@ DOMAIN_NAME=yourdomain.com ./gateway/load-balancer-setup.sh
 
 ## 🔀 Traffic Routing
 
-Both gateways route traffic as follows:
+The load balancer routes traffic as follows:
 
 | Path | Destination | Description |
 |------|-------------|-------------|
 | `/` | Frontend | React application |
-| `/api/*` | Backend | API endpoints (prefix removed) |
+| `/api/*` | Backend | API endpoints |
 | `/docs` | Backend | FastAPI documentation |
 | `/redoc` | Backend | Alternative API documentation |
 | `/openapi.json` | Backend | OpenAPI specification |
-| `/health` | Gateway | Gateway health check |
-| `/api/health` | Backend | Backend health check (proxied) |
 
 ## 🔧 Configuration
 
-### Environment Variables (NGINX)
-
-- `BACKEND_URL` - Backend Cloud Run service URL
-- `FRONTEND_URL` - Frontend Cloud Run service URL
-
-These are automatically set by the deployment scripts.
-
-### Domain Configuration (Load Balancer)
+### Domain Configuration
 
 - `DOMAIN_NAME` - Your custom domain (e.g., `aialchemy.com`)
+- Set as GitHub secret or provide during manual deployment
+
+### DNS Configuration Required
+
+After deployment, you'll receive an external IP address. Create an A record:
+
+```
+Type: A
+Name: @ (or your subdomain)
+Value: [External IP from deployment output]
+TTL: 300
+```
 
 ## 📊 Monitoring
 
 ### Health Checks
 ```bash
-# Gateway health
-curl https://your-gateway-url/health
-
 # Backend health through gateway
-curl https://your-gateway-url/api/health
+curl https://yourdomain.com/api/health
+
+# Frontend availability
+curl https://yourdomain.com
 ```
 
 ### Logs
 ```bash
-# NGINX Gateway logs
-gcloud logs tail 'resource.type=cloud_run_revision AND resource.labels.service_name=aialchemy-gateway'
-
 # Load Balancer logs
 gcloud logs tail 'resource.type=http_load_balancer'
+
+# Backend logs
+gcloud logs tail 'resource.type=cloud_run_revision AND resource.labels.service_name=aialchemy-backend'
+
+# Frontend logs  
+gcloud logs tail 'resource.type=cloud_run_revision AND resource.labels.service_name=aialchemy-frontend'
 ```
 
-## 🛠️ Customization
+## 🛠️ Management
 
-### Modify NGINX Configuration
-
-Edit `nginx.conf` to customize:
-- Rate limits
-- Caching policies
-- Security headers
-- Routing rules
-
-Then redeploy:
+### View Load Balancer Status
 ```bash
-cd gateway
-gcloud run deploy aialchemy-gateway --source .
+# List URL maps
+gcloud compute url-maps list
+
+# Check SSL certificates
+gcloud compute ssl-certificates list
+
+# View forwarding rules
+gcloud compute forwarding-rules list --global
 ```
 
-### Modify Load Balancer Routing
+### Update Load Balancer Routing
 
 Edit the URL map in `load-balancer-setup.sh` and run:
 ```bash
 gcloud compute url-maps import aialchemy-gateway-url-map --source=/tmp/url-map.yaml --global
 ```
 
-## 🔐 Security
+## 🔐 Security Features
 
-### NGINX Gateway Security
-- Rate limiting per IP
-- Security headers (HSTS, XSS protection, etc.)
-- CORS configuration
-- Request size limits
-- Deny access to sensitive files
+- **SSL/TLS termination** with automatic certificate management
+- **DDoS protection** via Google Cloud infrastructure
+- **Google Cloud Armor** integration available
+- **Geographic restrictions** (configurable)
+- **Request routing** based on URL patterns
+- **Backend service health checks**
 
-### Load Balancer Security
-- Google Cloud Armor integration
-- DDoS protection
-- SSL/TLS termination
-- Geographic restrictions (configurable)
+## ⏱️ SSL Certificate Provisioning
 
-## 💡 Tips
+- **Automatic provisioning** after DNS configuration
+- **Typical time:** 15-60 minutes after DNS propagation
+- **Automatic renewal** handled by Google
+- **Wildcard certificates** supported
 
-1. **Development:** Use NGINX gateway for simplicity
-2. **Production:** Use Cloud Load Balancer for performance and reliability
-3. **Custom Domain:** Both options support custom domains
-4. **SSL Certificates:** Load Balancer provides automatic SSL; NGINX requires manual setup
-5. **Cost:** NGINX is more cost-effective for low traffic; Load Balancer better for high traffic
+## 💰 Cost Considerations
+
+- **Base cost:** ~$18/month for global load balancer
+- **SSL certificates:** Free (Google-managed)
+- **CDN and traffic:** Additional usage-based costs
+- **More cost-effective** for high traffic compared to container-based solutions
+
+## 🔄 Deployment Options
+
+### Full Deployment
+Deploy backend, frontend, and gateway:
+```bash
+# GitHub Actions
+deploy_gateway: true
+gateway_only: false
+domain_name: yourdomain.com
+```
+
+### Gateway-Only Update
+Update just the gateway configuration:
+```bash
+# GitHub Actions  
+deploy_gateway: true
+gateway_only: true
+domain_name: yourdomain.com
+```
+
+### No Gateway
+Deploy services without gateway:
+```bash
+# GitHub Actions
+deploy_gateway: false
+```
+
+## 🎯 Production Ready
+
+This solution is production-ready and includes:
+- ✅ Enterprise-grade infrastructure
+- ✅ Automatic scaling and load distribution
+- ✅ Global CDN for performance
+- ✅ Managed SSL certificates
+- ✅ DDoS protection
+- ✅ Health monitoring
+- ✅ Automated deployment via GitHub Actions
 
 For detailed setup instructions, see [GATEWAY-SETUP.md](../docs/GATEWAY-SETUP.md).
