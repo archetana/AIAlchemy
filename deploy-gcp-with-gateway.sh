@@ -12,14 +12,15 @@ FRONTEND_SERVICE="aialchemy-frontend"
 GATEWAY_SERVICE="aialchemy-gateway"
 
 # Gateway options
-GATEWAY_TYPE="${GATEWAY_TYPE:-nginx}"  # nginx or load-balancer
+DEPLOY_GATEWAY="${DEPLOY_GATEWAY:-true}"  # true or false
 DOMAIN_NAME="${DOMAIN_NAME:-}"  # Required for load balancer
 
-echo "🚀 Starting AIAlchemy deployment to GCP with Gateway..."
-echo "Gateway Type: $GATEWAY_TYPE"
-if [ "$GATEWAY_TYPE" = "load-balancer" ] && [ -z "$DOMAIN_NAME" ]; then
-    echo "❌ Error: DOMAIN_NAME is required for load-balancer gateway type"
-    echo "Usage: DOMAIN_NAME=yourdomain.com GATEWAY_TYPE=load-balancer ./deploy-gcp-with-gateway.sh"
+echo "🚀 Starting AIAlchemy deployment to GCP..."
+echo "Deploy Gateway: $DEPLOY_GATEWAY"
+if [ "$DEPLOY_GATEWAY" = "true" ] && [ -z "$DOMAIN_NAME" ]; then
+    echo "❌ Error: DOMAIN_NAME is required for Cloud Load Balancer gateway"
+    echo "Usage: DOMAIN_NAME=yourdomain.com ./deploy-gcp-with-gateway.sh"
+    echo "Or: DEPLOY_GATEWAY=false ./deploy-gcp-with-gateway.sh (to skip gateway)"
     exit 1
 fi
 
@@ -40,7 +41,7 @@ gcloud services enable run.googleapis.com
 gcloud services enable cloudbuild.googleapis.com
 gcloud services enable sql-component.googleapis.com
 
-if [ "$GATEWAY_TYPE" = "load-balancer" ]; then
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
     gcloud services enable compute.googleapis.com
     gcloud services enable certificatemanager.googleapis.com
 fi
@@ -94,37 +95,8 @@ echo "✅ Frontend deployed at: $FRONTEND_URL"
 cd ..
 
 # Deploy Gateway
-if [ "$GATEWAY_TYPE" = "nginx" ]; then
-    echo "🌐 Deploying NGINX Gateway..."
-    
-    cd gateway
-    gcloud run deploy $GATEWAY_SERVICE \
-        --source . \
-        --platform managed \
-        --region $REGION \
-        --allow-unauthenticated \
-        --memory 256Mi \
-        --cpu 1 \
-        --timeout 300 \
-        --max-instances 10 \
-        --port 8080 \
-        --set-env-vars "BACKEND_URL=$BACKEND_URL,FRONTEND_URL=$FRONTEND_URL"
-    
-    GATEWAY_URL=$(gcloud run services describe $GATEWAY_SERVICE --region=$REGION --format='value(status.url)')
-    cd ..
-    
-    echo ""
-    echo "🎉 NGINX Gateway Deployment Complete!"
-    echo "===================================="
-    echo "Gateway URL: $GATEWAY_URL"
-    echo ""
-    echo "🔀 Access your application:"
-    echo "  Frontend: $GATEWAY_URL"
-    echo "  API: $GATEWAY_URL/api/"
-    echo "  Docs: $GATEWAY_URL/docs"
-    
-elif [ "$GATEWAY_TYPE" = "load-balancer" ]; then
-    echo "🌐 Setting up Cloud Load Balancer..."
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "🌐 Setting up Cloud Load Balancer Gateway..."
     
     # Set domain name for the setup script
     export DOMAIN_NAME
@@ -133,8 +105,8 @@ elif [ "$GATEWAY_TYPE" = "load-balancer" ]; then
     EXTERNAL_IP=$(gcloud compute forwarding-rules describe ${GATEWAY_SERVICE}-https-rule --global --format='value(IPAddress)')
     
     echo ""
-    echo "🎉 Load Balancer Deployment Complete!"
-    echo "===================================="
+    echo "🎉 Cloud Load Balancer Deployment Complete!"
+    echo "==========================================="
     echo "External IP: $EXTERNAL_IP"
     echo "Domain: https://$DOMAIN_NAME"
     echo ""
@@ -145,28 +117,37 @@ elif [ "$GATEWAY_TYPE" = "load-balancer" ]; then
     echo "  Frontend: https://$DOMAIN_NAME"
     echo "  API: https://$DOMAIN_NAME/api/"
     echo "  Docs: https://$DOMAIN_NAME/docs"
+else
+    echo "🔀 Gateway deployment skipped. Access services directly:"
 fi
 
 echo ""
-echo "📊 Direct service URLs (for reference):"
+echo "📊 Service URLs:"
 echo "  Backend:  $BACKEND_URL"
 echo "  Frontend: $FRONTEND_URL"
-if [ "$GATEWAY_TYPE" = "nginx" ]; then
-    echo "  Gateway:  $GATEWAY_URL"
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "  Gateway:  https://$DOMAIN_NAME (after DNS configuration)"
 fi
 
 echo ""
 echo "📊 Monitor your services:"
 echo "gcloud run services list"
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "gcloud compute url-maps list"
+    echo "gcloud compute ssl-certificates list"
+fi
 echo ""
 echo "📝 View logs:"
 echo "gcloud logs tail 'resource.type=cloud_run_revision'"
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "gcloud logs tail 'resource.type=http_load_balancer'"
+fi
 echo ""
 echo "🔄 Update services:"
 echo "Backend:  cd backend && gcloud run deploy $BACKEND_SERVICE --source ."
 echo "Frontend: cd frontend && gcloud run deploy $FRONTEND_SERVICE --source ."
-if [ "$GATEWAY_TYPE" = "nginx" ]; then
-    echo "Gateway:  cd gateway && gcloud run deploy $GATEWAY_SERVICE --source ."
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "Gateway:  DOMAIN_NAME=$DOMAIN_NAME ./gateway/load-balancer-setup.sh"
 fi
 echo ""
 echo "Happy coding! 🚀"
