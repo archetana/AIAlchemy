@@ -1,6 +1,6 @@
 #!/bin/bash
-# AIAlchemy GCP Deployment Script
-# Quick deployment to Google Cloud Run
+# AIAlchemy GCP Deployment Script with Gateway Options
+# Deploy backend, frontend, and gateway to Google Cloud Run
 
 set -e
 
@@ -9,8 +9,20 @@ PROJECT_ID="aialchemy-prod"
 REGION="us-central1"
 BACKEND_SERVICE="aialchemy-backend"
 FRONTEND_SERVICE="aialchemy-frontend"
+GATEWAY_SERVICE="aialchemy-gateway"
+
+# Gateway options
+DEPLOY_GATEWAY="${DEPLOY_GATEWAY:-true}"  # true or false
+DOMAIN_NAME="${DOMAIN_NAME:-}"  # Required for load balancer
 
 echo "🚀 Starting AIAlchemy deployment to GCP..."
+echo "Deploy Gateway: $DEPLOY_GATEWAY"
+if [ "$DEPLOY_GATEWAY" = "true" ] && [ -z "$DOMAIN_NAME" ]; then
+    echo "❌ Error: DOMAIN_NAME is required for Cloud Load Balancer gateway"
+    echo "Usage: DOMAIN_NAME=yourdomain.com ./deploy-gcp-with-gateway.sh"
+    echo "Or: DEPLOY_GATEWAY=false ./deploy-gcp-with-gateway.sh (to skip gateway)"
+    exit 1
+fi
 
 # Check if gcloud is installed
 if ! command -v gcloud &> /dev/null; then
@@ -29,54 +41,10 @@ gcloud services enable run.googleapis.com
 gcloud services enable cloudbuild.googleapis.com
 gcloud services enable sql-component.googleapis.com
 
-# Create backend Dockerfile
-echo "🐳 Creating backend Dockerfile..."
-cat > backend/Dockerfile << 'EOF'
-FROM python:3.9-slim
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Create uploads directory
-RUN mkdir -p uploads
-
-# Expose port (Cloud Run uses 8080 by default)
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
-
-# Start command
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
-EOF
-
-# Create backend requirements.txt
-echo "📦 Creating backend requirements.txt..."
-cat > backend/requirements.txt << 'EOF'
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-sqlalchemy==2.0.23
-psycopg2-binary==2.9.9
-pydantic==2.5.0
-python-multipart==0.0.6
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-alembic==1.12.1
-aiosqlite==0.19.0
-python-dotenv==1.0.0
-EOF
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    gcloud services enable compute.googleapis.com
+    gcloud services enable certificatemanager.googleapis.com
+fi
 
 # Deploy backend
 echo "🚀 Deploying backend to Cloud Run..."
@@ -90,7 +58,7 @@ gcloud run deploy $BACKEND_SERVICE \
     --cpu 1 \
     --timeout 300 \
     --max-instances 10 \
-    --port 8080
+    --port 8000
 
 # Get backend URL
 BACKEND_URL=$(gcloud run services describe $BACKEND_SERVICE --region=$REGION --format='value(status.url)')
@@ -105,49 +73,6 @@ REACT_APP_API_URL=$BACKEND_URL
 REACT_APP_NAME=AIAlchemy
 REACT_APP_VERSION=1.0.0
 REACT_APP_ENVIRONMENT=production
-EOF
-
-# Create frontend Dockerfile
-echo "🐳 Creating frontend Dockerfile..."
-cat > frontend/Dockerfile << 'EOF'
-# Build stage
-FROM node:18-alpine as builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy source code and build
-COPY . .
-RUN npm run build
-
-# Production stage
-FROM nginx:alpine
-
-# Copy built app
-COPY --from=builder /app/build /usr/share/nginx/html
-
-# Create nginx config
-RUN echo 'server { \
-    listen 8080; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-        try_files $uri $uri/ /index.html; \
-    } \
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { \
-        expires 1y; \
-        add_header Cache-Control "public, immutable"; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
-
-# Remove default nginx config
-RUN rm /etc/nginx/conf.d/default.conf.bak 2>/dev/null || true
-
-EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
 EOF
 
 # Deploy frontend
@@ -169,22 +94,60 @@ echo "✅ Frontend deployed at: $FRONTEND_URL"
 
 cd ..
 
-# Summary
+# Deploy Gateway
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "🌐 Setting up Cloud Load Balancer Gateway..."
+    
+    # Set domain name for the setup script
+    export DOMAIN_NAME
+    ./gateway/load-balancer-setup.sh
+    
+    EXTERNAL_IP=$(gcloud compute forwarding-rules describe ${GATEWAY_SERVICE}-https-rule --global --format='value(IPAddress)')
+    
+    echo ""
+    echo "🎉 Cloud Load Balancer Deployment Complete!"
+    echo "==========================================="
+    echo "External IP: $EXTERNAL_IP"
+    echo "Domain: https://$DOMAIN_NAME"
+    echo ""
+    echo "📋 IMPORTANT: Configure DNS"
+    echo "Create an A record for '$DOMAIN_NAME' pointing to $EXTERNAL_IP"
+    echo ""
+    echo "🔀 Once DNS is configured, access your application:"
+    echo "  Frontend: https://$DOMAIN_NAME"
+    echo "  API: https://$DOMAIN_NAME/api/"
+    echo "  Docs: https://$DOMAIN_NAME/docs"
+else
+    echo "🔀 Gateway deployment skipped. Access services directly:"
+fi
+
 echo ""
-echo "🎉 Deployment Complete!"
-echo "========================="
-echo "Backend API:  $BACKEND_URL"
-echo "Frontend App: $FRONTEND_URL"
-echo "Swagger Docs: $BACKEND_URL/docs"
+echo "📊 Service URLs:"
+echo "  Backend:  $BACKEND_URL"
+echo "  Frontend: $FRONTEND_URL"
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "  Gateway:  https://$DOMAIN_NAME (after DNS configuration)"
+fi
+
 echo ""
 echo "📊 Monitor your services:"
 echo "gcloud run services list"
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "gcloud compute url-maps list"
+    echo "gcloud compute ssl-certificates list"
+fi
 echo ""
 echo "📝 View logs:"
 echo "gcloud logs tail 'resource.type=cloud_run_revision'"
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "gcloud logs tail 'resource.type=http_load_balancer'"
+fi
 echo ""
 echo "🔄 Update services:"
-echo "cd backend && gcloud run deploy $BACKEND_SERVICE --source ."
-echo "cd frontend && gcloud run deploy $FRONTEND_SERVICE --source ."
+echo "Backend:  cd backend && gcloud run deploy $BACKEND_SERVICE --source ."
+echo "Frontend: cd frontend && gcloud run deploy $FRONTEND_SERVICE --source ."
+if [ "$DEPLOY_GATEWAY" = "true" ]; then
+    echo "Gateway:  DOMAIN_NAME=$DOMAIN_NAME ./gateway/load-balancer-setup.sh"
+fi
 echo ""
 echo "Happy coding! 🚀"
