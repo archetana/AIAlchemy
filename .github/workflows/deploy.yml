@@ -8,7 +8,7 @@ on:
       deploy_gateway:
         description: 'Deploy/Update Cloud Load Balancer Gateway'
         required: false
-        default: false
+        default: true
         type: boolean
       domain_name:
         description: 'Domain name (required for gateway)'
@@ -25,7 +25,7 @@ env:
   GAR_LOCATION: us-central1
   REPOSITORY: aialchemy-repo
   REGION: us-central1
-  DEPLOY_GATEWAY: ${{ github.event.inputs.deploy_gateway == 'true' }}
+  DEPLOY_GATEWAY: ${{ github.event.inputs.deploy_gateway != 'false' }}
   DOMAIN_NAME: ${{ github.event.inputs.domain_name || secrets.DOMAIN_NAME }}
   GATEWAY_ONLY: ${{ github.event.inputs.gateway_only == 'true' }}
 
