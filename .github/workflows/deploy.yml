@@ -44,16 +44,6 @@ jobs:
       - name: 🛠️ Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
 
-      - name: 🔧 Enable Required APIs
-        run: |
-          gcloud services enable run.googleapis.com
-          gcloud services enable cloudbuild.googleapis.com
-          gcloud services enable sql-component.googleapis.com
-          if [ "$DEPLOY_GATEWAY" = "true" ]; then
-            gcloud services enable compute.googleapis.com
-            gcloud services enable certificatemanager.googleapis.com
-          fi
-
       - name: 🔍 Validate Gateway Requirements
         if: env.DEPLOY_GATEWAY == 'true' && env.GATEWAY_ONLY == 'true'
         run: |
