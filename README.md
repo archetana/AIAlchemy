@@ -10,6 +10,31 @@
 
 ## 🚀 Quick Start
 
+### 🌐 Production Deployment (Google Cloud Platform)
+
+**One-click deployment** with Cloud Load Balancer gateway:
+
+```bash
+# Clone and deploy to GCP
+git clone https://github.com/archetana/AIAlchemy.git
+cd AIAlchemy
+
+# Authenticate with GCP
+gcloud auth login
+gcloud auth application-default login
+
+# Deploy with gateway (requires domain)
+DOMAIN_NAME=yourdomain.com ./deploy-gcp.sh
+```
+
+**What gets deployed:**
+- ✅ **Backend API** → Cloud Run (FastAPI + SQLAlchemy)
+- ✅ **Frontend Dashboard** → Cloud Run (React + TypeScript)
+- ✅ **Cloud Load Balancer** → Single DNS endpoint with SSL
+- ✅ **Global CDN** → Worldwide performance optimization
+
+### 💻 Local Development
+
 ```bash
 # Clone the repository
 git clone https://github.com/archetana/AIAlchemy.git
@@ -34,6 +59,7 @@ npm start
 - [Architecture](#-architecture)
 - [Tech Stack](#-tech-stack)
 - [Google Cloud Integration](#-google-cloud-integration)
+- [Gateway Setup](#-gateway-setup)
 - [Project Structure](#-project-structure)
 - [Installation](#-installation)
 - [Configuration](#-configuration)
@@ -428,6 +454,60 @@ def benchmark_startup(company_data: dict) -> dict:
     
     return list(client.query(query, job_config=job_config))[0]
 ```
+
+## 🌐 Gateway Setup
+
+AIAlchemy uses **Google Cloud Load Balancer** to provide a unified DNS endpoint that routes traffic to both frontend and backend services.
+
+### Architecture
+
+```
+Internet → Cloud Load Balancer → Frontend/Backend Services
+├── yourdomain.com/           → Frontend (React App)
+├── yourdomain.com/api/*      → Backend (FastAPI)
+└── yourdomain.com/docs       → API Documentation
+```
+
+### Features
+
+- ✅ **Single DNS endpoint** for frontend and backend
+- ✅ **Automatic SSL certificates** with auto-renewal
+- ✅ **Global CDN** for worldwide performance
+- ✅ **DDoS protection** and security
+- ✅ **Health monitoring** and automatic failover
+
+### Quick Setup
+
+```bash
+# Deploy with gateway (requires your domain)
+DOMAIN_NAME=yourdomain.com ./deploy-gcp.sh
+
+# DNS Configuration (required after deployment)
+# Create A record: yourdomain.com → [External IP from output]
+```
+
+### Gateway Management
+
+```bash
+# View load balancer status
+gcloud compute url-maps list
+gcloud compute ssl-certificates list
+
+# Update gateway configuration
+DOMAIN_NAME=yourdomain.com ./gateway/load-balancer-setup.sh
+
+# Monitor gateway logs
+gcloud logs tail 'resource.type=http_load_balancer'
+```
+
+### Cost & Performance
+
+- **Base cost:** ~$18/month for global load balancer
+- **SSL certificates:** Free (Google-managed)
+- **Performance:** Global CDN with 99.9% uptime SLA
+- **Scaling:** Automatic based on traffic
+
+See [`docs/GATEWAY-SETUP.md`](docs/GATEWAY-SETUP.md) for detailed configuration and troubleshooting.
 
 ## 📁 Project Structure
 
@@ -977,7 +1057,45 @@ test('useEvaluations returns correct data', async () => {
 
 ## 🚀 Deployment
 
-### Local Deployment with Docker
+### 🌐 Production Deployment (Recommended)
+
+**One-click deployment** to Google Cloud Platform with Cloud Load Balancer:
+
+```bash
+# Prerequisites: GCP account, gcloud CLI, Docker
+gcloud auth login
+gcloud auth application-default login
+
+# Deploy everything with gateway
+DOMAIN_NAME=yourdomain.com ./deploy-gcp.sh
+```
+
+**What you get:**
+- ✅ **Backend API** on Cloud Run with auto-scaling
+- ✅ **Frontend Dashboard** on Cloud Run with CDN
+- ✅ **Cloud Load Balancer** with SSL certificates
+- ✅ **Single DNS endpoint** routing `/` → frontend, `/api/` → backend
+
+**Access your application:**
+- **Frontend:** `https://yourdomain.com`
+- **API:** `https://yourdomain.com/api/`
+- **API Docs:** `https://yourdomain.com/docs`
+
+### ⚙️ GitHub Actions Deployment
+
+Configure automated deployments via GitHub Actions:
+
+1. **Set secrets** in your GitHub repository:
+   - `GCP_PROJECT_ID` - Your Google Cloud project ID
+   - `GCP_SA_KEY` - Service account JSON key
+   - `DOMAIN_NAME` - Your domain for the gateway
+
+2. **Deploy options:**
+   - **Full deployment:** `deploy_gateway: true, domain_name: yourdomain.com`
+   - **Gateway only:** `gateway_only: true, domain_name: yourdomain.com`
+   - **No gateway:** `deploy_gateway: false`
+
+### 💻 Local Development Deployment
 
 ```bash
 # Build production images
@@ -991,37 +1109,23 @@ docker-compose ps
 docker-compose logs
 ```
 
-### Google Cloud Run Deployment
+### 🔧 Manual Cloud Run Deployment
 
-#### 1. Build and Push Images
+For custom deployment configurations:
 
 ```bash
-# Configure Docker for Google Container Registry
-gcloud auth configure-docker
+# Configure Docker for Artifact Registry
+gcloud auth configure-docker us-central1-docker.pkg.dev
 
 # Build and push backend
 cd backend
-docker build -t gcr.io/YOUR_PROJECT_ID/AIAlchemy-backend:latest .
-docker push gcr.io/YOUR_PROJECT_ID/AIAlchemy-backend:latest
+docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT/aialchemy-repo/backend:latest .
+docker push us-central1-docker.pkg.dev/YOUR_PROJECT/aialchemy-repo/backend:latest
 
 # Build and push frontend
 cd ../frontend
-docker build -t gcr.io/YOUR_PROJECT_ID/AIAlchemy-frontend:latest .
-docker push gcr.io/YOUR_PROJECT_ID/AIAlchemy-frontend:latest
-```
-
-#### 2. Deploy to Cloud Run
-
-```bash
-# Deploy backend service
-gcloud run deploy AIAlchemy-backend \
-    --image gcr.io/YOUR_PROJECT_ID/AIAlchemy-backend:latest \
-    --platform managed \
-    --region us-central1 \
-    --allow-unauthenticated \
-    --memory 2Gi \
-    --cpu 2 \
-    --max-instances 100 \
+docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT/aialchemy-repo/frontend:latest .
+docker push us-central1-docker.pkg.dev/YOUR_PROJECT/aialchemy-repo/frontend:latest
     --set-env-vars="DATABASE_URL=postgresql://user:pass@host:5432/db" \
     --set-env-vars="GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID"
 
