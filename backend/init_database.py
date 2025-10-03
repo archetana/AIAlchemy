@@ -11,7 +11,7 @@ import os
 # Add the app directory to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
 
-from app.init_db import init_database
+from app.init_db_unified import init_database
 
 async def main():
     """Main initialization function"""
