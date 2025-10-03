@@ -20,7 +20,8 @@ async def lifespan(app: FastAPI):
     
     # Initialize database
     try:
-        from app.init_db import init_database
+        from app.init_db_fixed import init_database
+        print("🔧 Initializing database tables and data...")
         db_success = await init_database()
         if db_success:
             print("✅ Database initialized successfully")
@@ -28,6 +29,8 @@ async def lifespan(app: FastAPI):
             print("⚠️  Database initialization had issues, but continuing...")
     except Exception as e:
         print(f"⚠️  Database initialization error: {e}")
+        import traceback
+        traceback.print_exc()
     
     print("📊 AIAlchemy API ready")
     yield
