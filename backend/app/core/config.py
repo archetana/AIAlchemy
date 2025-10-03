@@ -83,6 +83,22 @@ class Settings(BaseSettings):
     bucket_ml_models: Optional[str] = Field(default=None, env="BUCKET_ML_MODELS")
     bucket_documents: Optional[str] = Field(default=None, env="BUCKET_DOCUMENTS")
     
+    # Google Cloud Storage Configuration
+    use_google_cloud_storage: bool = Field(default=False, env="USE_GOOGLE_CLOUD_STORAGE")
+    google_cloud_storage_bucket: Optional[str] = Field(default=None, env="GOOGLE_CLOUD_STORAGE_BUCKET")
+    local_upload_path: str = Field(default="./uploads", env="LOCAL_UPLOAD_PATH")
+    max_upload_size_mb: int = Field(default=500, env="MAX_UPLOAD_SIZE_MB")
+    
+    # File size limits by category (in MB)
+    max_document_size_mb: int = Field(default=50, env="MAX_DOCUMENT_SIZE_MB")
+    max_image_size_mb: int = Field(default=10, env="MAX_IMAGE_SIZE_MB")
+    max_video_size_mb: int = Field(default=500, env="MAX_VIDEO_SIZE_MB")
+    max_audio_size_mb: int = Field(default=100, env="MAX_AUDIO_SIZE_MB")
+    
+    # Security Settings
+    enable_file_scanning: bool = Field(default=False, env="ENABLE_FILE_SCANNING")
+    virus_scan_timeout_seconds: int = Field(default=30, env="VIRUS_SCAN_TIMEOUT_SECONDS")
+    
     # Feature Flags
     enable_ai_interviews: bool = Field(default=True, env="ENABLE_AI_INTERVIEWS")
     enable_real_time_benchmarking: bool = Field(
