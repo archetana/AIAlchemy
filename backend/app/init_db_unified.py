@@ -112,6 +112,28 @@ async def verify_tables():
         traceback.print_exc()
         return False
 
+async def initialize_file_storage():
+    """Initialize file storage directories"""
+    try:
+        print("📁 Initializing file storage...")
+        import os
+        from pathlib import Path
+        
+        # Create local upload directories
+        upload_base = Path(os.getenv('LOCAL_UPLOAD_PATH', './uploads'))
+        upload_base.mkdir(parents=True, exist_ok=True)
+        
+        # Create subdirectories for different file types
+        for file_type in ['pitch_deck', 'financial_docs', 'team_info', 'legal_docs', 'media']:
+            (upload_base / file_type).mkdir(exist_ok=True)
+        
+        print(f"✅ File storage initialized at: {upload_base.absolute()}")
+        return True
+        
+    except Exception as e:
+        print(f"⚠️ File storage initialization failed: {e}")
+        return False
+
 async def init_database():
     """Initialize database with tables and sample data"""
     try:
@@ -127,7 +149,10 @@ async def init_database():
         if not data_added:
             print("⚠️ Sample data addition failed, but continuing...")
         
-        # Step 3: Verify everything works
+        # Step 3: Initialize file upload directories
+        await initialize_file_storage()
+        
+        # Step 4: Verify everything works
         verified = await verify_tables()
         
         if verified:

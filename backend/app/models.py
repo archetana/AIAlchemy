@@ -148,22 +148,35 @@ class UploadedFile(Base):
     """File management for pitch decks and documents"""
     __tablename__ = "uploaded_files"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(36), primary_key=True, index=True)  # UUID from file storage service
     startup_application_id = Column(Integer, ForeignKey("startup_applications.id"), nullable=False)
     
-    filename = Column(String(500), nullable=False)
+    # File metadata
     original_filename = Column(String(500), nullable=False)
-    file_type = Column(String(100))  # "pitch_deck", "financial_model", etc.
-    file_size = Column(Integer)
-    file_path = Column(String(1000))  # Storage path
-    mime_type = Column(String(200))
+    stored_filename = Column(String(500), nullable=False)  # Generated filename with UUID
+    file_type = Column(String(100))  # "pitch_deck", "financial_docs", "team_info", etc.
+    content_type = Column(String(200), nullable=False)  # MIME type
+    file_size = Column(Integer, nullable=False)
+    file_hash = Column(String(64))  # SHA-256 hash for deduplication
     
-    status = Column(Enum(FileStatus), default=FileStatus.UPLOADING)
+    # Storage information
+    file_path = Column(String(1000), nullable=False)  # Full storage path (local or GCS)
+    relative_path = Column(String(500))  # Relative path for organization
+    storage_backend = Column(String(50), default='local')  # 'local' or 'gcs'
+    
+    # Processing status
+    is_processed = Column(Boolean, default=False)
     processing_progress = Column(Integer, default=0)  # 0-100%
-    extraction_metadata = Column(JSON)  # Extracted data from files
     
-    uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Metadata and security
+    description = Column(Text)  # User-provided description
+    metadata_json = Column(JSON)  # Extracted data, scan results, etc.
+    is_safe = Column(Boolean, default=True)  # Virus scan result
+    
+    # Timestamps
+    upload_timestamp = Column(DateTime(timezone=True), server_default=func.now())
     processed_at = Column(DateTime(timezone=True))
+    last_accessed_at = Column(DateTime(timezone=True))
     
     # Relationships
     startup_application = relationship("StartupApplication", back_populates="uploaded_files")
