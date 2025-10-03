@@ -151,10 +151,10 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:aialchemy-storage@$PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/storage.objectAdmin"
 
-# Grant bucket reader permissions (can list buckets and read bucket metadata)
+# Grant storage admin permissions (can manage buckets and objects)
 gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:aialchemy-storage@$PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/storage.legacyBucketReader"
+    --role="roles/storage.admin"
 
 # Verify permissions
 gcloud projects get-iam-policy $PROJECT_ID \

@@ -96,7 +96,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:aialchemy-storage@$PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/storage.legacyBucketReader"
+    --role="roles/storage.admin"
 
 # STEP 8: Generate service account key (navigate to your project directory first)
 echo "🔑 Generating service account key..."
@@ -166,7 +166,7 @@ gcloud iam service-accounts create aialchemy-storage --display-name="AIAlchemy S
 ### 6. Grant Permissions
 ```bash
 gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:aialchemy-storage@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/storage.objectAdmin"
-gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:aialchemy-storage@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/storage.legacyBucketReader"
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:aialchemy-storage@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/storage.admin"
 ```
 
 ### 7. Generate Key
