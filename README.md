@@ -12,7 +12,7 @@
 
 ### 🌐 Production Deployment (Google Cloud Platform)
 
-**One-click deployment** with Cloud Load Balancer gateway:
+**Cost-effective deployment** with Nginx Gateway (Recommended):
 
 ```bash
 # Clone and deploy to GCP
@@ -23,15 +23,23 @@ cd AIAlchemy
 gcloud auth login
 gcloud auth application-default login
 
-# Deploy with gateway (requires domain)
-DOMAIN_NAME=yourdomain.com ./deploy-gcp.sh
+# Deploy with nginx gateway (no domain required)
+./deploy-nginx-gateway.sh
 ```
 
 **What gets deployed:**
 - ✅ **Backend API** → Cloud Run (FastAPI + SQLAlchemy)
 - ✅ **Frontend Dashboard** → Cloud Run (React + TypeScript)
-- ✅ **Cloud Load Balancer** → Single DNS endpoint with SSL
-- ✅ **Global CDN** → Worldwide performance optimization
+- ✅ **Nginx Gateway** → Single URL endpoint for routing
+- ✅ **Cost Optimized** → ~$25/month savings vs Load Balancer
+
+### 🔄 Alternative: Load Balancer Deployment
+
+For enterprise features (requires domain):
+```bash
+# Deploy with Cloud Load Balancer + SSL + CDN
+DOMAIN_NAME=yourdomain.com ./deploy-gcp.sh
+```
 
 ### 💻 Local Development
 
