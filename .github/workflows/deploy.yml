@@ -158,11 +158,6 @@ jobs:
           echo "   API: $GATEWAY_URL/api/"
           echo "   Docs: $GATEWAY_URL/docs"
           echo "   Health: $GATEWAY_URL/health"
-          echo ""
-          echo "💰 Cost Benefits:"
-          echo "   - No load balancer fees (~$25/month saved)"
-          echo "   - Pay-per-use pricing only"
-          echo "   - Automatic scaling to zero"
 
       - name: 📊 Create Job Summary
         run: |
