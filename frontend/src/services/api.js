@@ -7,7 +7,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+  baseURL: process.env.REACT_APP_API_URL || '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -46,51 +46,51 @@ api.interceptors.response.use(
 // Dashboard API calls
 export const dashboardApi = {
   // Get dashboard overview (fast loading)
-  getOverview: () => api.get('/api/dashboard/overview'),
+  getOverview: () => api.get('/dashboard/overview'),
   
   // Get complete dashboard stats
-  getStats: () => api.get('/api/dashboard/stats'),
+  getStats: () => api.get('/dashboard/stats'),
 };
 
 // Startups API calls
 export const startupsApi = {
   // Get paginated startups list with filters
-  getStartups: (params = {}) => api.get('/api/startups/', { params }),
+  getStartups: (params = {}) => api.get('/startups/', { params }),
   
   // Get specific startup details
-  getStartup: (id) => api.get(`/api/startups/${id}`),
+  getStartup: (id) => api.get(`/startups/${id}`),
   
   // Create new startup
-  createStartup: (data) => api.post('/api/startups/', data),
+  createStartup: (data) => api.post('/startups/', data),
   
   // Update startup
-  updateStartup: (id, data) => api.put(`/api/startups/${id}`, data),
+  updateStartup: (id, data) => api.put(`/startups/${id}`, data),
   
   // Search suggestions
   getSearchSuggestions: (query, limit = 5) => 
-    api.get('/api/startups/search/suggestions', { params: { query, limit } }),
+    api.get('/startups/search/suggestions', { params: { query, limit } }),
   
   // Get count by status
-  getStatusCount: (status) => api.get(`/api/startups/status/${status}/count`),
+  getStatusCount: (status) => api.get(`/startups/status/${status}/count`),
 };
 
 // Pipeline API calls
 export const pipelineApi = {
   // Get pipeline statistics
-  getStats: () => api.get('/api/pipeline/stats'),
+  getStats: () => api.get('/pipeline/stats'),
   
   // Get pipeline stages (Kanban data)
-  getStages: () => api.get('/api/pipeline/stages'),
+  getStages: () => api.get('/pipeline/stages'),
   
   // Get bottleneck analysis
-  getBottlenecks: () => api.get('/api/pipeline/bottlenecks'),
+  getBottlenecks: () => api.get('/pipeline/bottlenecks'),
   
   // Get throughput metrics
-  getThroughput: (days = 30) => api.get('/api/pipeline/throughput', { params: { days } }),
+  getThroughput: (days = 30) => api.get('/pipeline/throughput', { params: { days } }),
   
   // Update application status
   updateStatus: (startupId, newStatus, notes = '') => 
-    api.put(`/api/pipeline/applications/${startupId}/status`, newStatus, {
+    api.put(`/pipeline/applications/${startupId}/status`, newStatus, {
       params: { notes }
     }),
 };
@@ -98,62 +98,62 @@ export const pipelineApi = {
 // Settings API calls
 export const settingsApi = {
   // User management
-  getCurrentUser: () => api.get('/api/settings/users/me'),
-  updateCurrentUser: (data) => api.put('/api/settings/users/me', data),
-  getAllUsers: () => api.get('/api/settings/users'),
+  getCurrentUser: () => api.get('/settings/users/me'),
+  updateCurrentUser: (data) => api.put('/settings/users/me', data),
+  getAllUsers: () => api.get('/settings/users'),
   
   // Investment weights
-  getInvestmentWeights: () => api.get('/api/settings/investment-weights'),
-  updateInvestmentWeights: (data) => api.put('/api/settings/investment-weights', data),
+  getInvestmentWeights: () => api.get('/settings/investment-weights'),
+  updateInvestmentWeights: (data) => api.put('/settings/investment-weights', data),
   
   // Account preferences  
-  getPreferences: () => api.get('/api/settings/account/preferences'),
-  updatePreferences: (data) => api.put('/api/settings/account/preferences', data),
+  getPreferences: () => api.get('/settings/account/preferences'),
+  updatePreferences: (data) => api.put('/settings/account/preferences', data),
   
   // System configuration
-  getSettings: () => api.get('/api/settings/account/preferences'), // Fallback to preferences
-  updateSettings: (data) => api.put('/api/settings/account/preferences', data),
+  getSettings: () => api.get('/settings/account/preferences'), // Fallback to preferences
+  updateSettings: (data) => api.put('/settings/account/preferences', data),
   
   // System info
-  getSystemInfo: () => api.get('/api/settings/system/info'),
-  getIndustries: () => api.get('/api/settings/industries'),
+  getSystemInfo: () => api.get('/settings/system/info'),
+  getIndustries: () => api.get('/settings/industries'),
 };
 
 // Investment Memos API calls
 export const memosApi = {
   // Get memo for startup
-  getMemoByStartup: (startupId) => api.get(`/api/memos/startup/${startupId}`),
+  getMemoByStartup: (startupId) => api.get(`/memos/startup/${startupId}`),
   
   // Create memo
-  createMemo: (data, authorId) => api.post('/api/memos/', data, { params: { author_id: authorId } }),
+  createMemo: (data, authorId) => api.post('/memos/', data, { params: { author_id: authorId } }),
   
   // Update memo
-  updateMemo: (memoId, data) => api.put(`/api/memos/${memoId}`, data),
+  updateMemo: (memoId, data) => api.put(`/memos/${memoId}`, data),
   
   // Approve memo
-  approveMemo: (memoId) => api.post(`/api/memos/${memoId}/approve`),
+  approveMemo: (memoId) => api.post(`/memos/${memoId}/approve`),
   
   // Schedule review
   scheduleReview: (memoId, reviewDate) => 
-    api.post(`/api/memos/${memoId}/schedule-review`, null, { params: { review_date: reviewDate } }),
+    api.post(`/memos/${memoId}/schedule-review`, null, { params: { review_date: reviewDate } }),
   
   // Get memo stats
-  getStats: () => api.get('/api/memos/stats/summary'),
+  getStats: () => api.get('/memos/stats/summary'),
 };
 
 // Users/Team Management API calls
 export const usersApi = {
   // Get team members
-  getTeamMembers: () => api.get('/api/settings/users'),
+  getTeamMembers: () => api.get('/settings/users'),
   
   // Invite new user
-  inviteUser: (userData) => api.post('/api/settings/users/invite', userData),
+  inviteUser: (userData) => api.post('/settings/users/invite', userData),
   
   // Remove user
-  removeUser: (userId) => api.delete(`/api/settings/users/${userId}`),
+  removeUser: (userId) => api.delete(`/settings/users/${userId}`),
   
   // Update user role
-  updateUserRole: (userId, role) => api.put(`/api/settings/users/${userId}/role`, { role }),
+  updateUserRole: (userId, role) => api.put(`/settings/users/${userId}/role`, { role }),
 };
 
 // File Upload API calls
@@ -164,14 +164,14 @@ export const uploadsApi = {
     formData.append('file_type', fileType);
     files.forEach(file => formData.append('files', file));
     
-    return api.post(`/api/uploads/startup/${startupId}/files`, formData, {
+    return api.post(`/uploads/startup/${startupId}/files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // Upload single file (for use during application creation)
   uploadFile: (formData, onUploadProgress) => {
-    return api.post('/api/uploads/files', formData, {
+    return api.post('/uploads/files', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress
     });
@@ -179,18 +179,18 @@ export const uploadsApi = {
   
   // Get files for startup
   getStartupFiles: (startupId, fileType = null) => 
-    api.get(`/api/uploads/startup/${startupId}/files`, { 
+    api.get(`/uploads/startup/${startupId}/files`, { 
       params: fileType ? { file_type: fileType } : {} 
     }),
   
   // Download file
-  downloadFile: (fileId) => api.get(`/api/uploads/files/${fileId}`, { responseType: 'blob' }),
+  downloadFile: (fileId) => api.get(`/uploads/files/${fileId}`, { responseType: 'blob' }),
   
   // Delete file
-  deleteFile: (fileId) => api.delete(`/api/uploads/files/${fileId}`),
+  deleteFile: (fileId) => api.delete(`/uploads/files/${fileId}`),
   
   // Get upload stats
-  getStats: () => api.get('/api/uploads/stats/summary'),
+  getStats: () => api.get('/uploads/stats/summary'),
 };
 
 // Utility functions
@@ -199,7 +199,7 @@ export const apiUtils = {
   testConnection: () => api.get('/health'),
   
   // Get API status
-  getApiStatus: () => api.get('/api/status'),
+  getApiStatus: () => api.get('/status'),
   
   // Handle API errors
   handleError: (error) => {

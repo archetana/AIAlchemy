@@ -299,7 +299,7 @@ const Dashboard = () => {
               Pipeline: {loading.pipeline ? 'Loading...' : 'Loaded'}
             </Typography>
             <Typography variant="caption" display="block" color="text.secondary">
-              API: {process.env.REACT_APP_API_URL || 'http://localhost:8000'}
+              API: {process.env.REACT_APP_API_URL || '/api (via gateway)'}
             </Typography>
           </Paper>
         )}
