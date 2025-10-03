@@ -17,7 +17,19 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     print("🚀 Starting AIAlchemy API server...")
-    print("📊 Database connection established")
+    
+    # Initialize database
+    try:
+        from app.init_db import init_database
+        db_success = await init_database()
+        if db_success:
+            print("✅ Database initialized successfully")
+        else:
+            print("⚠️  Database initialization had issues, but continuing...")
+    except Exception as e:
+        print(f"⚠️  Database initialization error: {e}")
+    
+    print("📊 AIAlchemy API ready")
     yield
     # Shutdown
     print("🔒 Shutting down AIAlchemy API server...")
@@ -77,10 +89,27 @@ async def root():
 @app.get("/health")
 async def health():
     """Health check endpoint"""
+    from app.database import async_session_local
+    from sqlalchemy import text
+    
+    db_status = "connected"
+    tables_exist = False
+    
+    try:
+        async with async_session_local() as session:
+            # Check if startup_applications table exists
+            result = await session.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name='startup_applications'")
+            )
+            tables_exist = result.fetchone() is not None
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
     return {
-        "status": "healthy",
-        "service": "aialchemy-backend",
-        "database": "connected",
+        "status": "healthy" if tables_exist else "degraded",
+        "service": "aialchemy-backend", 
+        "database": db_status,
+        "tables_initialized": tables_exist,
         "timestamp": "2025-01-20T16:00:00Z"
     }
 

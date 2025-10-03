@@ -3,9 +3,12 @@ set -e
 
 echo "🚀 Starting AIAlchemy Backend"
 
-# For now, use standalone app until we add database infrastructure
-# TODO: Switch to main.py when database is configured
-echo "🔧 Using standalone app for production (database will be added later)"
+# Initialize database on startup
+echo "🔧 Initializing database..."
+python3 init_database.py || echo "⚠️ Database init warning (may already exist)"
+
+# Start the application
+echo "✅ Starting FastAPI application"
 exec uvicorn app.main:app \
     --host 0.0.0.0 \
     --port ${PORT:-8000} \
