@@ -110,9 +110,10 @@ const Pipeline = () => {
           manual_review: 68.4,
           partner_review: 85.0
         },
-        bottlenecks: [
-          { stage: 'ai_analysis', severity: 'medium', reason: 'High processing time' }
-        ]
+        bottlenecks: {
+          ai_analysis: 3,
+          data_processing: 2
+        }
       });
       
       // Fallback applications data

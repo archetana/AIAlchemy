@@ -44,9 +44,31 @@ const PipelineStats = ({ pipelineData, loading }) => {
     stages = {},
     conversion_rates = {},
     avg_days_per_stage = {},
-    bottlenecks = [],
+    bottlenecks = {},
     weekly_throughput = 0
   } = pipelineData;
+
+  // Convert bottlenecks to array for rendering - handle both dict and array formats
+  const bottleneckArray = React.useMemo(() => {
+    if (!bottlenecks) return [];
+    
+    // If already an array, return as is (for backward compatibility)
+    if (Array.isArray(bottlenecks)) {
+      return bottlenecks;
+    }
+    
+    // If it's a dictionary (expected format), convert to array
+    if (typeof bottlenecks === 'object') {
+      return Object.entries(bottlenecks).map(([stage, count]) => ({
+        stage,
+        count,
+        severity: count > 5 ? 'high' : count > 3 ? 'medium' : 'low',
+        reason: `${count} applications in ${stage.replace('_', ' ')} stage`
+      }));
+    }
+    
+    return [];
+  }, [bottlenecks]);
 
   const totalApplications = Object.values(stages).reduce((sum, count) => sum + count, 0);
   const completionRate = totalApplications > 0 ? ((stages.completed || 0) / totalApplications * 100) : 0;
@@ -200,7 +222,7 @@ const PipelineStats = ({ pipelineData, loading }) => {
               Pipeline Bottlenecks
             </Typography>
             
-            {bottlenecks.length === 0 ? (
+            {bottleneckArray.length === 0 ? (
               <Alert severity="success" icon={<CheckCircleIcon />}>
                 <Typography variant="body2">
                   No bottlenecks detected
@@ -211,7 +233,7 @@ const PipelineStats = ({ pipelineData, loading }) => {
               </Alert>
             ) : (
               <Box display="flex" flexDirection="column" gap={2}>
-                {bottlenecks.map((bottleneck, index) => (
+                {bottleneckArray.map((bottleneck, index) => (
                   <Alert 
                     key={index}
                     severity={bottleneck.severity === 'high' ? 'error' : 'warning'}
