@@ -34,6 +34,18 @@ class DatabaseManager:
         self.async_session_maker = None
         self._is_connected = False
     
+    def _get_async_database_url(self, url: str) -> str:
+        """Ensure proper sqlite+aiosqlite URL format for SQLAlchemy async engine"""
+        if "sqlite+aiosqlite" in url:
+            # SQLAlchemy async requires sqlite+aiosqlite:/// format (three slashes)
+            if url.startswith("sqlite+aiosqlite:///"):
+                # Already correct format
+                return url
+            elif url.startswith("sqlite+aiosqlite://"):
+                # Convert from double slash to triple slash format  
+                return url.replace("sqlite+aiosqlite://", "sqlite+aiosqlite:///", 1)
+        return url
+    
     async def connect(self) -> None:
         """Initialize database connection."""
         if self._is_connected:
@@ -42,6 +54,9 @@ class DatabaseManager:
         settings = get_settings()
         
         try:
+            # Convert database URL format for async compatibility
+            database_url = self._get_async_database_url(settings.database_url)
+            
             # Create async engine with different config for SQLite vs PostgreSQL
             engine_kwargs = {
                 "echo": settings.is_development,
@@ -49,7 +64,7 @@ class DatabaseManager:
             }
             
             # Only add pool settings for PostgreSQL (not SQLite)
-            if not settings.database_url.startswith("sqlite"):
+            if not database_url.startswith("sqlite"):
                 engine_kwargs.update({
                     "pool_size": settings.database_pool_size,
                     "max_overflow": settings.database_max_overflow,
@@ -60,7 +75,7 @@ class DatabaseManager:
                 engine_kwargs["poolclass"] = NullPool
             
             self.engine = create_async_engine(
-                settings.database_url,
+                database_url,
                 **engine_kwargs
             )
             
@@ -77,7 +92,9 @@ class DatabaseManager:
                 await conn.execute(text("SELECT 1"))
             
             self._is_connected = True
-            logger.info("Database connection established", database_url=settings.database_url.split("@")[0])
+            logger.info("Database connection established", 
+                       original_url=settings.database_url.split("@")[0],
+                       converted_url=database_url.split("@")[0])
             
         except Exception as e:
             logger.error("Failed to connect to database", error=str(e))
