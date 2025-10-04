@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 
+// Authentication
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
+
 // Components
 import TopNavigation from './components/Navigation/TopNavigation';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -10,6 +14,10 @@ import Pipeline from './components/Pipeline/Pipeline';
 import InvestmentMemo from './components/Memo/InvestmentMemo';
 import Upload from './components/Upload/Upload';
 import Settings from './components/Settings/Settings';
+
+// Authentication Components
+import Login from './components/Auth/Login';
+import Register from './components/Auth/Register';
 
 // Create Material-UI theme
 const theme = createTheme({
@@ -84,29 +92,87 @@ const theme = createTheme({
   },
 });
 
+// App layout component for authenticated pages
+const AppLayout = ({ children }) => (
+  <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    {/* Top Navigation */}
+    <TopNavigation />
+    
+    {/* Main Content */}
+    <Box component="main" sx={{ flexGrow: 1 }}>
+      {children}
+    </Box>
+  </Box>
+);
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          {/* Top Navigation */}
-          <TopNavigation />
-          
-          {/* Main Content with Routes */}
-          <Box component="main" sx={{ flexGrow: 1 }}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/pipeline" element={<Pipeline />} />
-              <Route path="/memo/:applicationId" element={<InvestmentMemo />} />
-              <Route path="/applications/new" element={<Upload />} />
-              <Route path="/settings" element={<Settings />} />
-              {/* Future routes */}
-              {/* <Route path="/memos" element={<Memos />} /> */}
-            </Routes>
-          </Box>
-        </Box>
-      </Router>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public Routes - No authentication required */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Protected Routes - Authentication required */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Dashboard />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/pipeline" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Pipeline />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/memo/:applicationId" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <InvestmentMemo />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/applications/new" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Upload />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Settings />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+
+            {/* Role-based protected routes - Admin only */}
+            {/* Example for future admin-only routes:
+            <Route path="/admin/*" element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <AppLayout>
+                  <AdminPanel />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            */}
+            
+            {/* Future routes */}
+            {/* <Route path="/memos" element={<Memos />} /> */}
+          </Routes>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

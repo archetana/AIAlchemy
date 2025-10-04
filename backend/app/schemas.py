@@ -12,6 +12,21 @@ class BaseSchema(BaseModel):
     class Config:
         from_attributes = True
 
+# First define UserProfile to avoid forward reference issues
+class UserProfile(BaseModel):
+    """User profile information (no sensitive data)"""
+    id: int
+    email: EmailStr
+    full_name: str
+    title: Optional[str] = None
+    phone: Optional[str] = None
+    role: UserRole
+    is_active: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 # Authentication Schemas
 class LoginRequest(BaseModel):
     """User login request"""
@@ -24,7 +39,7 @@ class LoginResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
-    user: 'UserProfile'
+    user: UserProfile
 
 class RefreshTokenRequest(BaseModel):
     """Refresh token request"""
@@ -47,7 +62,7 @@ class RegisterRequest(BaseModel):
 class RegisterResponse(BaseModel):
     """User registration response"""
     message: str
-    user: 'UserProfile'
+    user: UserProfile
 
 class PasswordChangeRequest(BaseModel):
     """Password change request"""
@@ -57,20 +72,6 @@ class PasswordChangeRequest(BaseModel):
 class PasswordResetRequest(BaseModel):
     """Password reset request"""
     email: EmailStr
-
-class UserProfile(BaseModel):
-    """User profile information (no sensitive data)"""
-    id: int
-    email: EmailStr
-    full_name: str
-    title: Optional[str] = None
-    phone: Optional[str] = None
-    role: UserRole
-    is_active: bool
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 # User Schemas
 class UserBase(BaseModel):

@@ -37,5 +37,5 @@ python3 init_db_standalone.py || echo "⚠️ Sample data init warning"
 echo "✅ Starting FastAPI application"
 exec uvicorn app.main:app \
     --host 0.0.0.0 \
-    --port ${PORT:-8000} \
+    --port ${PORT:-8080} \
     --log-level info
