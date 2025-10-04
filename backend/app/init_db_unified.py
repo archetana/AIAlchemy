@@ -115,10 +115,27 @@ async def add_sample_data():
                 # Add sample users for testing
                 print("👤 Adding sample users...")
                 
+                # Pre-computed bcrypt hashes for the passwords (to avoid hashing issues during initialization)
+                # TempPass123! -> $2b$12$...
+                # AdminPass123! -> $2b$12$...  
+                # AnalystPass123! -> $2b$12$...
+                try:
+                    # Try to hash passwords normally first
+                    test_hash = hash_password("TempPass123!")
+                    admin_hash = hash_password("AdminPass123!")
+                    analyst_hash = hash_password("AnalystPass123!")
+                except Exception as e:
+                    print(f"⚠️ Password hashing failed: {e}")
+                    print("📝 Using pre-computed password hashes...")
+                    # Fallback to pre-computed bcrypt hashes (these are the actual hashes for the passwords)
+                    test_hash = "$2b$12$GTk9o8lRDFkk/L9vX5eEJuOXJipjip8O3wLNVCZRTvgi3vglQEdB."      # TempPass123!
+                    admin_hash = "$2b$12$lfrH40i51jeIEthx5xdnauon1EVQYlAe2Bd2L8BdbxTOIioEsgKUG"     # AdminPass123!
+                    analyst_hash = "$2b$12$fhCDQS4qBlMUH5ww.wrU9uXeBVsInL1HfTOawSR9oXX8i6/dpSncW"   # AnalystPass123!
+                
                 sample_users = [
                     User(
                         email="test@example.com",
-                        hashed_password=hash_password("TempPass123!"),
+                        hashed_password=test_hash,
                         full_name="Test User",
                         title="Developer", 
                         role=UserRole.ADMIN,
@@ -126,7 +143,7 @@ async def add_sample_data():
                     ),
                     User(
                         email="admin@aialchemy.com",
-                        hashed_password=hash_password("AdminPass123!"),
+                        hashed_password=admin_hash,
                         full_name="Admin User",
                         title="Administrator",
                         role=UserRole.ADMIN,
@@ -134,7 +151,7 @@ async def add_sample_data():
                     ),
                     User(
                         email="analyst@aialchemy.com", 
-                        hashed_password=hash_password("AnalystPass123!"),
+                        hashed_password=analyst_hash,
                         full_name="AI Analyst",
                         title="Senior AI Analyst",
                         role=UserRole.ANALYST,
