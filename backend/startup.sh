@@ -25,22 +25,12 @@ else
     echo "📁 Using local file storage"
 fi
 
-# Initialize database on startup
-echo "🔧 Initializing database..."
-python3 -c "
-import asyncio
-from app.database import engine
-from app.models import Base
-
-async def create_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        print('✅ Database tables created successfully')
-
-asyncio.run(create_tables())
-" || echo "⚠️ Database init warning"
+# Initialize database on startup (reliable sync method)
+echo "🔧 Creating database tables..."
+python3 create_tables_sync.py || echo "⚠️ Table creation warning"
 
 # Also run the standalone init for sample data
+echo "🔧 Adding sample data..."
 python3 init_db_standalone.py || echo "⚠️ Sample data init warning"
 
 # Start the application
