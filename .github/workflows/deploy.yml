@@ -1,205 +1,233 @@
-name: 🚀 Deploy AIAlchemy with Nginx Gateway
+name: Deploy to Production with GCS
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
-    inputs:
-      gateway_only:
-        description: 'Deploy nginx gateway only (skip backend/frontend)'
-        required: false
-        default: false
-        type: boolean
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GAR_LOCATION: us-central1
-  REPOSITORY: aialchemy-repo
+  PROJECT_ID: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
   REGION: us-central1
-  GATEWAY_ONLY: ${{ github.event.inputs.gateway_only == 'true' }}
+  BACKEND_SERVICE: aialchemy-backend
+  FRONTEND_SERVICE: aialchemy-frontend
+  GATEWAY_SERVICE: aialchemy-gateway
+  REPO_NAME: aialchemy-repo
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: 🔐 Google Auth
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
 
-      - name: 🛠️ Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}
 
-      - name: 🔍 Verify Required APIs
-        run: |
-          echo "Checking if required APIs are enabled..."
-          gcloud services list --enabled --filter="name:(run.googleapis.com OR cloudbuild.googleapis.com)" --format="table(name)" || true
-          echo "Note: If APIs are missing, they should be manually enabled in GCP Console"
+    - name: Configure Docker for Artifact Registry
+      run: |
+        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
-      - name: 🔍 Validate Gateway-Only Requirements
-        if: env.GATEWAY_ONLY == 'true'
-        run: |
-          echo "🔍 Checking if backend and frontend services exist for gateway-only deployment..."
-          BACKEND_URL=$(gcloud run services describe aialchemy-backend --region=$REGION --format='value(status.url)' 2>/dev/null || echo "")
-          FRONTEND_URL=$(gcloud run services describe aialchemy-frontend --region=$REGION --format='value(status.url)' 2>/dev/null || echo "")
-          
-          if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
-            echo "❌ Error: Backend and frontend services must exist for gateway-only deployment"
-            echo "Backend URL: $BACKEND_URL"
-            echo "Frontend URL: $FRONTEND_URL"
-            echo "Please run a full deployment first (set gateway_only: false)"
-            exit 1
-          fi
-          
-          echo "✅ Services found:"
-          echo "Backend: $BACKEND_URL"
-          echo "Frontend: $FRONTEND_URL"
+    - name: Create GCS service account key file
+      run: |
+        echo '${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}' > /tmp/gcs-service-account-key.json
+        
+    - name: Verify GCS setup
+      run: |
+        echo "🔍 Verifying GCS configuration..."
+        
+        # Test bucket access
+        gsutil ls gs://${{ secrets.GCS_BUCKET_NAME }}/ || echo "Bucket verification failed"
+        
+        # Test authentication
+        gcloud auth list --filter=status:ACTIVE --format="value(account)"
 
-      - name: 🐳 Configure Docker
-        if: env.GATEWAY_ONLY != 'true'
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+    - name: Enable required APIs
+      run: |
+        echo "📡 Enabling required APIs..."
+        gcloud services enable run.googleapis.com \
+          cloudbuild.googleapis.com \
+          artifactregistry.googleapis.com \
+          storage.googleapis.com
 
-      - name: 🏗️ Build and Push Backend
-        if: env.GATEWAY_ONLY != 'true'
-        run: |
-          cd backend
-          docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/backend:$GITHUB_SHA .
-          docker push us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/backend:$GITHUB_SHA
+    - name: Create Artifact Registry repository
+      run: |
+        echo "🏭 Setting up Artifact Registry..."
+        if ! gcloud artifacts repositories describe ${{ env.REPO_NAME }} --location=${{ env.REGION }} >/dev/null 2>&1; then
+          gcloud artifacts repositories create ${{ env.REPO_NAME }} \
+            --repository-format=docker \
+            --location=${{ env.REGION }} \
+            --description="AIAlchemy Docker images"
+          echo "✅ Artifact Registry repository created"
+        else
+          echo "✅ Artifact Registry repository exists"
+        fi
 
-      - name: 🏗️ Build and Push Frontend
-        if: env.GATEWAY_ONLY != 'true'
-        run: |
-          cd frontend
-          docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/frontend:$GITHUB_SHA .
-          docker push us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/frontend:$GITHUB_SHA
+    - name: Build and push backend
+      run: |
+        echo "🔧 Building and deploying backend..."
+        cd backend
+        
+        # Build backend image
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:${{ github.sha }} .
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:${{ github.sha }}
+        
+        # Tag as latest
+        docker tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:${{ github.sha }} \
+                   ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:latest
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:latest
 
-      - name: 🚀 Deploy Backend to Cloud Run
-        if: env.GATEWAY_ONLY != 'true'
-        run: |
-          gcloud run deploy aialchemy-backend \
-            --image=us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/backend:$GITHUB_SHA \
-            --region=$REGION \
-            --set-env-vars="ENVIRONMENT=production,GOOGLE_CLOUD_PROJECT=$PROJECT_ID" \
-            --memory=2Gi \
-            --cpu=2 \
-            --min-instances=1 \
-            --max-instances=10 \
-            --allow-unauthenticated
+    - name: Deploy backend to Cloud Run
+      run: |
+        echo "🚀 Deploying backend to Cloud Run..."
+        
+        # Create service account key for runtime
+        echo '${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}' | base64 -w 0 > gcs_key_base64.txt
+        
+        gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:latest \
+          --platform managed \
+          --region ${{ env.REGION }} \
+          --allow-unauthenticated \
+          --memory 2Gi \
+          --cpu 1 \
+          --min-instances 0 \
+          --max-instances 10 \
+          --port 8000 \
+          --set-env-vars="DATABASE_URL=sqlite:///./aialchemy.db" \
+          --set-env-vars="USE_GOOGLE_CLOUD_STORAGE=true" \
+          --set-env-vars="GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GCS_BUCKET_NAME }}" \
+          --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
+          --set-env-vars="SECRET_KEY=${{ secrets.SECRET_KEY }}" \
+          --set-env-vars="JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
+          --set-env-vars="ENVIRONMENT=production" \
+          --set-env-vars="DEBUG=false" \
+          --set-env-vars="GCS_SERVICE_ACCOUNT_KEY_BASE64=$(cat gcs_key_base64.txt)"
+        
+        # Clean up temporary file
+        rm gcs_key_base64.txt
 
-      - name: 🚀 Deploy Frontend to Cloud Run
-        if: env.GATEWAY_ONLY != 'true'
-        run: |
-          gcloud run deploy aialchemy-frontend \
-            --image=us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/frontend:$GITHUB_SHA \
-            --region=$REGION \
-            --set-env-vars="REACT_APP_API_BASE_URL=/api,REACT_APP_ENVIRONMENT=production" \
-            --memory=1Gi \
-            --cpu=1 \
-            --min-instances=1 \
-            --max-instances=5 \
-            --allow-unauthenticated
+    - name: Build and push frontend
+      run: |
+        echo "🎨 Building and deploying frontend..."
+        cd frontend
+        
+        # Build frontend image
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:${{ github.sha }} .
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:${{ github.sha }}
+        
+        # Tag as latest
+        docker tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:${{ github.sha }} \
+                   ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:latest
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:latest
 
-      - name: 🏗️ Build and Push Nginx Gateway
-        run: |
-          cd nginx-gateway
-          docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/gateway:$GITHUB_SHA .
-          docker push us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/gateway:$GITHUB_SHA
+    - name: Deploy frontend to Cloud Run
+      run: |
+        echo "🎨 Deploying frontend to Cloud Run..."
+        
+        gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:latest \
+          --platform managed \
+          --region ${{ env.REGION }} \
+          --allow-unauthenticated \
+          --memory 1Gi \
+          --cpu 1 \
+          --min-instances 0 \
+          --max-instances 5 \
+          --port 3000 \
+          --set-env-vars="REACT_APP_API_URL=/api"
 
-      - name: 🌐 Deploy Nginx Gateway
-        run: |
-          # Get service URLs for nginx configuration
-          BACKEND_URL=$(gcloud run services describe aialchemy-backend --region=$REGION --format='value(status.url)' 2>/dev/null || echo "")
-          FRONTEND_URL=$(gcloud run services describe aialchemy-frontend --region=$REGION --format='value(status.url)' 2>/dev/null || echo "")
-          
-          if [ -z "$BACKEND_URL" ] || [ -z "$FRONTEND_URL" ]; then
-            echo "❌ Error: Backend and frontend services must be deployed before setting up gateway"
-            echo "Backend URL: $BACKEND_URL"
-            echo "Frontend URL: $FRONTEND_URL"
-            exit 1
-          fi
-          
-          # Extract hostnames from URLs
-          BACKEND_HOST=$(echo $BACKEND_URL | sed 's|https://||')
-          FRONTEND_HOST=$(echo $FRONTEND_URL | sed 's|https://||')
-          
-          echo "✅ Services verified:"
-          echo "Backend: $BACKEND_URL"
-          echo "Frontend: $FRONTEND_URL"
-          echo "Backend Host: $BACKEND_HOST"
-          echo "Frontend Host: $FRONTEND_HOST"
-          
-          # Deploy nginx gateway
-          gcloud run deploy aialchemy-gateway \
-            --image=us-central1-docker.pkg.dev/$PROJECT_ID/aialchemy-repo/gateway:$GITHUB_SHA \
-            --region=$REGION \
-            --set-env-vars="BACKEND_HOST=$BACKEND_HOST,FRONTEND_HOST=$FRONTEND_HOST" \
-            --memory=256Mi \
-            --cpu=1 \
-            --min-instances=1 \
-            --max-instances=3 \
-            --port=8080 \
-            --allow-unauthenticated
+    - name: Build and push gateway
+      run: |
+        echo "🌐 Building and deploying gateway..."
+        cd nginx-gateway
+        
+        # Build gateway image  
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/nginx-gateway:${{ github.sha }} .
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/nginx-gateway:${{ github.sha }}
+        
+        # Tag as latest
+        docker tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/nginx-gateway:${{ github.sha }} \
+                   ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/nginx-gateway:latest
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/nginx-gateway:latest
 
-      - name: 🎉 Get Deployment URLs
-        run: |
-          BACKEND_URL=$(gcloud run services describe aialchemy-backend --region=$REGION --format='value(status.url)' 2>/dev/null || echo "Not deployed")
-          FRONTEND_URL=$(gcloud run services describe aialchemy-frontend --region=$REGION --format='value(status.url)' 2>/dev/null || echo "Not deployed")
-          GATEWAY_URL=$(gcloud run services describe aialchemy-gateway --region=$REGION --format='value(status.url)' 2>/dev/null || echo "Not deployed")
-          
-          echo "🌐 Backend URL: $BACKEND_URL"
-          echo "🌐 Frontend URL: $FRONTEND_URL"
-          echo "🌐 Gateway URL: $GATEWAY_URL"
-          echo ""
-          echo "🔀 Access your application via Nginx Gateway:"
-          echo "   Frontend: $GATEWAY_URL"
-          echo "   API: $GATEWAY_URL/api/"
-          echo "   Docs: $GATEWAY_URL/docs"
-          echo "   Health: $GATEWAY_URL/health"
+    - name: Get service URLs
+      id: get-urls
+      run: |
+        BACKEND_URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --platform managed --region ${{ env.REGION }} --format 'value(status.url)')
+        FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} --platform managed --region ${{ env.REGION }} --format 'value(status.url)')
+        
+        echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_OUTPUT
+        echo "FRONTEND_URL=$FRONTEND_URL" >> $GITHUB_OUTPUT
+        
+        echo "Backend URL: $BACKEND_URL"
+        echo "Frontend URL: $FRONTEND_URL"
 
-      - name: 📊 Create Job Summary
-        run: |
-          echo "# 🎉 AIAlchemy Nginx Gateway Deployment Complete!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Service URLs
-          BACKEND_URL=$(gcloud run services describe aialchemy-backend --region=$REGION --format='value(status.url)' 2>/dev/null || echo "Not deployed")
-          FRONTEND_URL=$(gcloud run services describe aialchemy-frontend --region=$REGION --format='value(status.url)' 2>/dev/null || echo "Not deployed")
-          GATEWAY_URL=$(gcloud run services describe aialchemy-gateway --region=$REGION --format='value(status.url)' 2>/dev/null || echo "Not deployed")
-          
-          if [ "$GATEWAY_ONLY" = "true" ]; then
-            echo "## 🌐 Gateway Update Only" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## 🚀 Deployed Services" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
-            echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
-            echo "| 🔧 Backend | [$BACKEND_URL]($BACKEND_URL) |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🎨 Frontend | [$FRONTEND_URL]($FRONTEND_URL) |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🌐 Gateway | [$GATEWAY_URL]($GATEWAY_URL) |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 🌐 Nginx Gateway Access" >> $GITHUB_STEP_SUMMARY
-          echo "- **Main URL**: [$GATEWAY_URL]($GATEWAY_URL)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Frontend**: [$GATEWAY_URL]($GATEWAY_URL)" >> $GITHUB_STEP_SUMMARY
-          echo "- **API**: [$GATEWAY_URL/api/]($GATEWAY_URL/api/)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Docs**: [$GATEWAY_URL/docs]($GATEWAY_URL/docs)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Health**: [$GATEWAY_URL/health]($GATEWAY_URL/health)" >> $GITHUB_STEP_SUMMARY
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 💰 Cost Benefits" >> $GITHUB_STEP_SUMMARY
-          echo "- **No Load Balancer Fees**: Save ~$25/month" >> $GITHUB_STEP_SUMMARY
-          echo "- **Pay-per-Use**: Only charged when processing requests" >> $GITHUB_STEP_SUMMARY
-          echo "- **Auto-scaling**: Scales to zero when not used" >> $GITHUB_STEP_SUMMARY
-          echo "- **Simple Architecture**: Single nginx proxy for routing" >> $GITHUB_STEP_SUMMARY
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 📊 Deployment Details" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deployment Type**: $([ "$GATEWAY_ONLY" = "true" ] && echo "Gateway Only" || echo "Full Stack + Gateway")" >> $GITHUB_STEP_SUMMARY
-          echo "- **Gateway Type**: Nginx Proxy (Cloud Run)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Region**: $REGION" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit SHA**: $GITHUB_SHA" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deployed at**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+    - name: Deploy gateway to Cloud Run
+      run: |
+        echo "🌐 Deploying gateway to Cloud Run..."
+        
+        # Extract hostnames from URLs
+        BACKEND_HOST=$(echo "${{ steps.get-urls.outputs.BACKEND_URL }}" | sed 's|https://||')
+        FRONTEND_HOST=$(echo "${{ steps.get-urls.outputs.FRONTEND_URL }}" | sed 's|https://||')
+        
+        gcloud run deploy ${{ env.GATEWAY_SERVICE }} \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/nginx-gateway:latest \
+          --platform managed \
+          --region ${{ env.REGION }} \
+          --allow-unauthenticated \
+          --memory 512Mi \
+          --cpu 1 \
+          --min-instances 0 \
+          --max-instances 3 \
+          --port 8080 \
+          --set-env-vars="BACKEND_HOST=$BACKEND_HOST,FRONTEND_HOST=$FRONTEND_HOST"
+
+    - name: Display deployment summary
+      run: |
+        echo "🎉 Deployment Complete!"
+        echo "================================="
+        
+        GATEWAY_URL=$(gcloud run services describe ${{ env.GATEWAY_SERVICE }} --platform managed --region ${{ env.REGION }} --format 'value(status.url)')
+        
+        echo "🌐 Application URL: $GATEWAY_URL"
+        echo "🔧 Backend API: ${{ steps.get-urls.outputs.BACKEND_URL }}"
+        echo "🎨 Frontend: ${{ steps.get-urls.outputs.FRONTEND_URL }}"
+        echo ""
+        echo "📊 Test endpoints:"
+        echo "- Health check: $GATEWAY_URL/health"
+        echo "- API status: $GATEWAY_URL/api/status"  
+        echo "- Dashboard: $GATEWAY_URL/"
+        echo "- File upload: $GATEWAY_URL/api/uploads/startup/1/files"
+        echo ""
+        echo "🗂️ File Storage: gs://${{ secrets.GCS_BUCKET_NAME }}"
+        echo "📝 All services deployed successfully with GCS integration!"
+
+    - name: Run basic health checks
+      run: |
+        echo "🧪 Running basic health checks..."
+        
+        GATEWAY_URL=$(gcloud run services describe ${{ env.GATEWAY_SERVICE }} --platform managed --region ${{ env.REGION }} --format 'value(status.url)')
+        BACKEND_URL=${{ steps.get-urls.outputs.BACKEND_URL }}
+        
+        # Wait a moment for services to be ready
+        sleep 10
+        
+        # Test backend health
+        echo "Testing backend health..."
+        curl -f "$BACKEND_URL/health" || echo "Backend health check failed"
+        
+        # Test gateway health  
+        echo "Testing gateway health..."
+        curl -f "$GATEWAY_URL/health" || echo "Gateway health check failed"
+        
+        echo "✅ Health checks completed"
