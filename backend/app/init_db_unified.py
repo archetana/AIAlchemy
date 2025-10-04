@@ -31,6 +31,7 @@ async def add_sample_data():
         from app.database import async_session_local
         from app.models import StartupApplication, ApplicationStatus, FundingStage, Industry, User, UserRole
         from app.auth.password_utils import hash_password
+        from app.auth.simple_password import simple_hash_password
         from sqlalchemy import select
         
         async with async_session_local() as session:
@@ -119,18 +120,28 @@ async def add_sample_data():
                 # TempPass123! -> $2b$12$...
                 # AdminPass123! -> $2b$12$...  
                 # AnalystPass123! -> $2b$12$...
+                # Try multiple password hashing approaches
                 try:
-                    # Try to hash passwords normally first
+                    # Method 1: Try passlib-based hashing (primary)
                     test_hash = hash_password("TempPass123!")
                     admin_hash = hash_password("AdminPass123!")
                     analyst_hash = hash_password("AnalystPass123!")
+                    print("✅ Passlib password hashing succeeded")
                 except Exception as e:
-                    print(f"⚠️ Password hashing failed: {e}")
-                    print("📝 Using pre-computed password hashes...")
-                    # Fallback to pre-computed bcrypt hashes (these are the actual hashes for the passwords)
-                    test_hash = "$2b$12$GTk9o8lRDFkk/L9vX5eEJuOXJipjip8O3wLNVCZRTvgi3vglQEdB."      # TempPass123!
-                    admin_hash = "$2b$12$lfrH40i51jeIEthx5xdnauon1EVQYlAe2Bd2L8BdbxTOIioEsgKUG"     # AdminPass123!
-                    analyst_hash = "$2b$12$fhCDQS4qBlMUH5ww.wrU9uXeBVsInL1HfTOawSR9oXX8i6/dpSncW"   # AnalystPass123!
+                    print(f"⚠️ Passlib password hashing failed: {e}")
+                    try:
+                        # Method 2: Try simple bcrypt hashing (fallback 1)
+                        test_hash = simple_hash_password("TempPass123!")
+                        admin_hash = simple_hash_password("AdminPass123!")
+                        analyst_hash = simple_hash_password("AnalystPass123!")
+                        print("✅ Simple bcrypt password hashing succeeded")
+                    except Exception as e2:
+                        print(f"⚠️ Simple bcrypt hashing failed: {e2}")
+                        print("📝 Using pre-computed password hashes...")
+                        # Method 3: Fallback to pre-computed bcrypt hashes
+                        test_hash = "$2b$12$GTk9o8lRDFkk/L9vX5eEJuOXJipjip8O3wLNVCZRTvgi3vglQEdB."      # TempPass123!
+                        admin_hash = "$2b$12$lfrH40i51jeIEthx5xdnauon1EVQYlAe2Bd2L8BdbxTOIioEsgKUG"     # AdminPass123!
+                        analyst_hash = "$2b$12$fhCDQS4qBlMUH5ww.wrU9uXeBVsInL1HfTOawSR9oXX8i6/dpSncW"   # AnalystPass123!
                 
                 sample_users = [
                     User(
