@@ -164,15 +164,37 @@ To update any secret later:
 
 ---
 
+## 🔧 **Step 4: Setup GitHub Actions Workflow**
+
+Due to GitHub App permissions, you need to manually create the workflow file:
+
+1. **Create the workflow directory** (if it doesn't exist):
+   ```
+   mkdir -p .github/workflows
+   ```
+
+2. **Copy the workflow template**:
+   - Copy the content from `github-actions-workflow-template.yml` 
+   - Create a new file: `.github/workflows/deploy-production.yml`
+   - Paste the content into the new file
+
+3. **Commit and push the workflow**:
+   ```bash
+   git add .github/workflows/deploy-production.yml
+   git commit -m "Add production deployment workflow"
+   git push origin main
+   ```
+
 ## 🎉 **Next Steps**
 
-After setting up secrets:
+After setting up secrets AND workflow:
 
 1. **✅ Add all 5 secrets to GitHub**
-2. **✅ Push code to trigger deployment**
-3. **✅ Monitor GitHub Actions workflow** 
-4. **✅ Test the deployed application**
-5. **✅ Verify file uploads to GCS bucket**
+2. **✅ Create the workflow file manually**
+3. **✅ Push code to trigger deployment**
+4. **✅ Monitor GitHub Actions workflow** 
+5. **✅ Test the deployed application**
+6. **✅ Verify file uploads to GCS bucket**
 
 ## 📞 **Need Help?**
 
