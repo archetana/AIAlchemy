@@ -9,8 +9,9 @@ from contextlib import asynccontextmanager
 import os
 
 # Import routers
-from app.routers import dashboard, startups, pipeline, memos, uploads, settings
-from app.database import Base, engine
+from app.routers import dashboard, startups, pipeline, memos, uploads, settings, auth
+from app.core.database import database_manager
+from app.auth.auth_middleware import AuthenticationMiddleware, SecurityHeadersMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -18,7 +19,17 @@ async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Starting AIAlchemy API server...")
     
-    # Initialize database
+    # Initialize database connection
+    try:
+        print("🔧 Connecting to database...")
+        await database_manager.connect()
+        print("✅ Database connected successfully")
+    except Exception as e:
+        print(f"⚠️ Database connection error: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Initialize database schema and data
     try:
         from app.init_db_unified import init_database
         print("🔧 Initializing database tables and data...")
@@ -36,6 +47,11 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     print("🔒 Shutting down AIAlchemy API server...")
+    try:
+        await database_manager.disconnect()
+        print("✅ Database disconnected")
+    except Exception as e:
+        print(f"⚠️ Database disconnect error: {e}")
 
 # Create FastAPI app
 app = FastAPI(
@@ -44,6 +60,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Add Security Middleware
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(AuthenticationMiddleware)
 
 # Enable CORS
 app.add_middleware(
@@ -55,6 +75,7 @@ app.add_middleware(
 )
 
 # Include API routers
+app.include_router(auth.router)  # Authentication routes (public)
 app.include_router(dashboard.router)
 app.include_router(startups.router)
 app.include_router(pipeline.router)
@@ -85,26 +106,28 @@ async def root():
             "Investment memo generation",
             "File upload and processing",
             "Comprehensive analytics dashboard",
-            "User account management"
+            "User account management",
+            "JWT-based authentication",
+            "Role-based access control"
         ]
     }
 
 @app.get("/health")
 async def health():
     """Health check endpoint"""
-    from app.database import async_session_local
     from sqlalchemy import text
     
-    db_status = "connected"
+    db_status = "connected" if database_manager.is_connected else "disconnected"
     tables_exist = False
     
     try:
-        async with async_session_local() as session:
-            # Check if startup_applications table exists
-            result = await session.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='startup_applications'")
-            )
-            tables_exist = result.fetchone() is not None
+        if database_manager.is_connected:
+            async with database_manager.get_session() as session:
+                # Check if startup_applications table exists
+                result = await session.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='startup_applications'")
+                )
+                tables_exist = result.fetchone() is not None
     except Exception as e:
         db_status = f"error: {str(e)}"
     
@@ -154,6 +177,13 @@ async def api_status():
                 "GET /api/settings/users/me",
                 "PUT /api/settings/users/me",
                 "GET /api/settings/investment-weights"
+            ],
+            "auth": [
+                "POST /api/auth/login",
+                "POST /api/auth/register",
+                "POST /api/auth/refresh",
+                "POST /api/auth/logout",
+                "GET /api/auth/me"
             ]
         }
     }

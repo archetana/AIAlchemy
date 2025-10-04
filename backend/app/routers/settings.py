@@ -7,86 +7,68 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from app.database import get_db
+from app.core.database import get_db_session
 from app.crud import user_crud, industry_crud
-from app.schemas import User, UserUpdate, Industry, InvestmentWeights
+from app.schemas import User, UserUpdate, Industry, InvestmentWeights, UserProfile
 from app.models import User as UserModel
 from app.models import InvestmentWeights as InvestmentWeightsModel
+from app.auth.auth_dependencies import get_current_user, require_admin, require_admin_or_partner
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
-@router.get("/users/me", response_model=User)
-async def get_current_user(
-    user_id: int = 1,  # Simplified - in production, get from JWT token
-    db: AsyncSession = Depends(get_db)
+@router.get("/users/me", response_model=UserProfile)
+async def get_current_user_profile(
+    current_user: UserModel = Depends(get_current_user)
 ):
     """
     Get current user profile information
     """
-    try:
-        user = await user_crud.get_user_by_id(db, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        return user
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch user profile: {str(e)}")
+    return UserProfile.model_validate(current_user)
 
-@router.put("/users/me", response_model=User)
+@router.put("/users/me", response_model=UserProfile)
 async def update_current_user(
     user_data: UserUpdate,
-    user_id: int = 1,  # Simplified - in production, get from JWT token
-    db: AsyncSession = Depends(get_db)
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Update current user profile information
     """
     try:
-        from sqlalchemy import select
-        
-        # Get current user
-        query = select(UserModel).where(UserModel.id == user_id)
-        result = await db.execute(query)
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
         # Update user data
         update_data = user_data.dict(exclude_unset=True)
         for field, value in update_data.items():
-            setattr(user, field, value)
+            setattr(current_user, field, value)
         
         await db.commit()
-        await db.refresh(user)
+        await db.refresh(current_user)
         
-        return user
+        return UserProfile.model_validate(current_user)
         
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update user profile: {str(e)}")
 
-@router.get("/users", response_model=List[User])
+@router.get("/users", response_model=List[UserProfile])
 async def get_all_users(
-    db: AsyncSession = Depends(get_db)
+    current_user: UserModel = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Get all users (for admin settings)
     """
     try:
         users = await user_crud.get_all_users(db)
-        return users
+        return [UserProfile.model_validate(user) for user in users]
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
 
 @router.get("/industries", response_model=List[Industry])
 async def get_all_industries(
-    db: AsyncSession = Depends(get_db)
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Get all industries for configuration
@@ -100,7 +82,8 @@ async def get_all_industries(
 
 @router.get("/investment-weights", response_model=InvestmentWeights)
 async def get_investment_weights(
-    db: AsyncSession = Depends(get_db)
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Get current investment criteria weights
@@ -133,8 +116,8 @@ async def get_investment_weights(
 @router.put("/investment-weights", response_model=InvestmentWeights)
 async def update_investment_weights(
     weights_data: InvestmentWeights,
-    user_id: int = 1,  # Simplified - in production, get from JWT token
-    db: AsyncSession = Depends(get_db)
+    current_user: UserModel = Depends(require_admin_or_partner()),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Update investment criteria weights
@@ -168,7 +151,7 @@ async def update_investment_weights(
             business_model_weight=weights_data.business_model_weight,
             traction_weight=weights_data.traction_weight,
             financial_health_weight=weights_data.financial_health_weight,
-            created_by_id=user_id,
+            created_by_id=current_user.id,
             is_active=True
         )
         
@@ -185,16 +168,14 @@ async def update_investment_weights(
 
 @router.get("/account/preferences")
 async def get_account_preferences(
-    user_id: int = 1,  # Simplified - in production, get from JWT token
-    db: AsyncSession = Depends(get_db)
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Get user account preferences
     """
     try:
-        user = await user_crud.get_user_by_id(db, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        # User is already authenticated and available as current_user
         
         # Return account preferences (expandable)
         preferences = {
@@ -227,16 +208,14 @@ async def get_account_preferences(
 @router.put("/account/preferences")
 async def update_account_preferences(
     preferences: dict,
-    user_id: int = 1,  # Simplified - in production, get from JWT token
-    db: AsyncSession = Depends(get_db)
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Update user account preferences
     """
     try:
-        user = await user_crud.get_user_by_id(db, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        # User is already authenticated and available as current_user
         
         # In production, you would store preferences in a separate table
         # For now, just return success
@@ -256,7 +235,8 @@ async def update_account_preferences(
 
 @router.get("/system/info")
 async def get_system_info(
-    db: AsyncSession = Depends(get_db)
+    current_user: UserModel = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Get system information and health

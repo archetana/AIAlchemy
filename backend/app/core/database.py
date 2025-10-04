@@ -42,14 +42,26 @@ class DatabaseManager:
         settings = get_settings()
         
         try:
-            # Create async engine
+            # Create async engine with different config for SQLite vs PostgreSQL
+            engine_kwargs = {
+                "echo": settings.is_development,
+                "future": True
+            }
+            
+            # Only add pool settings for PostgreSQL (not SQLite)
+            if not settings.database_url.startswith("sqlite"):
+                engine_kwargs.update({
+                    "pool_size": settings.database_pool_size,
+                    "max_overflow": settings.database_max_overflow,
+                    "poolclass": NullPool if settings.is_development else None,
+                })
+            else:
+                # For SQLite, use NullPool to avoid connection pool issues
+                engine_kwargs["poolclass"] = NullPool
+            
             self.engine = create_async_engine(
                 settings.database_url,
-                echo=settings.is_development,
-                pool_size=settings.database_pool_size,
-                max_overflow=settings.database_max_overflow,
-                poolclass=NullPool if settings.is_development else None,
-                future=True
+                **engine_kwargs
             )
             
             # Create session maker
@@ -61,7 +73,8 @@ class DatabaseManager:
             
             # Test connection
             async with self.engine.begin() as conn:
-                await conn.execute("SELECT 1")
+                from sqlalchemy import text
+                await conn.execute(text("SELECT 1"))
             
             self._is_connected = True
             logger.info("Database connection established", database_url=settings.database_url.split("@")[0])
