@@ -12,9 +12,25 @@ from pathlib import Path
 # Database URL - SQLite for development, PostgreSQL for production
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./aialchemy.db")
 
+# Ensure correct sqlite+aiosqlite URL format for async engine
+def get_async_database_url(url: str) -> str:
+    """Ensure proper sqlite+aiosqlite URL format for SQLAlchemy async engine"""
+    if "sqlite+aiosqlite" in url:
+        # SQLAlchemy async requires sqlite+aiosqlite:/// format (three slashes)
+        if url.startswith("sqlite+aiosqlite:///"):
+            # Already correct format
+            return url
+        elif url.startswith("sqlite+aiosqlite://"):
+            # Convert from double slash to triple slash format  
+            return url.replace("sqlite+aiosqlite://", "sqlite+aiosqlite:///", 1)
+    return url
+
+# Get properly formatted database URL
+ASYNC_DATABASE_URL = get_async_database_url(DATABASE_URL)
+
 # Create async engine
 engine = create_async_engine(
-    DATABASE_URL,
+    ASYNC_DATABASE_URL,
     echo=True if os.getenv("DEBUG") == "true" else False,
     future=True
 )
