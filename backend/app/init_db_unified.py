@@ -29,7 +29,7 @@ async def add_sample_data():
     try:
         print("📊 Adding sample startup data...")
         from app.database import async_session_local
-        from app.models import StartupApplication, ApplicationStatus, FundingStage
+        from app.models import StartupApplication, ApplicationStatus, FundingStage, Industry
         from sqlalchemy import select
         
         async with async_session_local() as session:
@@ -38,41 +38,70 @@ async def add_sample_data():
             existing = result.fetchall()
             
             if len(existing) == 0:
+                print("➕ Adding sample industries...")
+                
+                # First, create sample industries
+                sample_industries = [
+                    Industry(name="AI/ML", description="Artificial Intelligence and Machine Learning"),
+                    Industry(name="CleanTech", description="Clean Technology and Renewable Energy"),
+                    Industry(name="HealthTech", description="Healthcare Technology and Medical Devices"),
+                    Industry(name="FinTech", description="Financial Technology"),
+                    Industry(name="EdTech", description="Educational Technology")
+                ]
+                
+                for industry in sample_industries:
+                    session.add(industry)
+                
+                await session.commit()
+                
+                # Get the created industries
+                ai_industry = await session.execute(select(Industry).where(Industry.name == "AI/ML"))
+                ai_industry = ai_industry.scalar_one()
+                
+                cleantech_industry = await session.execute(select(Industry).where(Industry.name == "CleanTech"))
+                cleantech_industry = cleantech_industry.scalar_one()
+                
+                healthtech_industry = await session.execute(select(Industry).where(Industry.name == "HealthTech"))
+                healthtech_industry = healthtech_industry.scalar_one()
+                
                 print("➕ Adding sample startup applications...")
                 
                 sample_apps = [
                     StartupApplication(
                         company_name="TechCorp AI",
-                        founders_name="John Doe",
-                        email="john@techcorp.ai",
+                        contact_name="John Doe",
+                        contact_email="john@techcorp.ai",
+                        website="https://techcorp.ai",
                         status=ApplicationStatus.NEW,
                         funding_stage=FundingStage.SEED,
-                        funding_amount=1000000.0,
-                        industry="AI/ML",
-                        description="AI-powered analytics platform",
-                        application_date=datetime.utcnow()
+                        funding_amount_requested=1000000.0,
+                        current_arr=100000.0,
+                        runway_months=18,
+                        industry_id=ai_industry.id
                     ),
                     StartupApplication(
                         company_name="GreenTech Solutions",
-                        founders_name="Jane Smith",
-                        email="jane@greentech.com",
+                        contact_name="Jane Smith",
+                        contact_email="jane@greentech.com",
+                        website="https://greentech.com",
                         status=ApplicationStatus.AI_ANALYSIS,
                         funding_stage=FundingStage.SERIES_A,
-                        funding_amount=5000000.0,
-                        industry="CleanTech",
-                        description="Renewable energy management system",
-                        application_date=datetime.utcnow()
+                        funding_amount_requested=5000000.0,
+                        current_arr=2000000.0,
+                        runway_months=24,
+                        industry_id=cleantech_industry.id
                     ),
                     StartupApplication(
                         company_name="HealthAI Inc",
-                        founders_name="Dr. Mike Johnson",
-                        email="mike@healthai.com",
+                        contact_name="Dr. Mike Johnson",
+                        contact_email="mike@healthai.com",
+                        website="https://healthai.com",
                         status=ApplicationStatus.COMPLETED,
                         funding_stage=FundingStage.SEED,
-                        funding_amount=2000000.0,
-                        industry="HealthTech",
-                        description="AI-powered medical diagnosis platform",
-                        application_date=datetime.utcnow()
+                        funding_amount_requested=2000000.0,
+                        current_arr=500000.0,
+                        runway_months=20,
+                        industry_id=healthtech_industry.id
                     )
                 ]
                 
@@ -80,7 +109,7 @@ async def add_sample_data():
                     session.add(app)
                 
                 await session.commit()
-                print(f"✅ Added {len(sample_apps)} sample startup applications")
+                print(f"✅ Added {len(sample_industries)} industries and {len(sample_apps)} startup applications")
             else:
                 print(f"ℹ️ Database already has {len(existing)} startup applications")
                 
