@@ -12,6 +12,12 @@ import aiofiles
 from fastapi import UploadFile, HTTPException
 from datetime import datetime
 import hashlib
+import logging
+
+from ..core.config import get_settings
+from ..core.gcs_auth import get_gcs_client, is_gcs_available
+
+logger = logging.getLogger(__name__)
 
 class FileStorageService:
     """Handles file upload and storage operations"""
