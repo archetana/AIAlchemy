@@ -14,11 +14,20 @@
     "axios": "^1.6.0",
     "react-router-dom": "^6.20.0"
   },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@testing-library/jest-dom": "^6.1.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.5.0"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "ESLINT_NO_DEV_ERRORS=true DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "build:production": "ESLINT_NO_DEV_ERRORS=true DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "test": "react-scripts test",
+    "test:e2e": "playwright test",
+    "test:e2e:headless": "playwright test --headless",
+    "test:ui": "playwright test --ui",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
