@@ -79,13 +79,6 @@ jobs:
         
         rm gcs_key_base64.txt
 
-    - name: Set IAM policy for backend
-      run: |
-        gcloud run services add-iam-policy-binding ${{ env.BACKEND_SERVICE }} \
-          --region=${{ env.REGION }} \
-          --member=allUsers \
-          --role=roles/run.invoker
-
     - name: Build and push frontend
       run: |
         cd frontend
