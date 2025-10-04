@@ -18,6 +18,7 @@ import {
   ListItemIcon,
   Badge,
   Tooltip,
+  Chip,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -31,12 +32,42 @@ import {
   Person as PersonIcon,
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const TopNavigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const menuOpen = Boolean(anchorEl);
+
+  // Handle logout
+  const handleLogout = async () => {
+    handleMenuClose();
+    await logout();
+    navigate('/login');
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user?.full_name) return 'U';
+    const names = user.full_name.split(' ');
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return user.full_name[0].toUpperCase();
+  };
+
+  // Get role color
+  const getRoleColor = (role) => {
+    switch (role?.toLowerCase()) {
+      case 'admin': return 'error';
+      case 'partner': return 'success';
+      case 'analyst': return 'primary';
+      case 'viewer': return 'default';
+      default: return 'default';
+    }
+  };
 
   // Navigation tabs configuration
   const navigationTabs = [
@@ -224,7 +255,7 @@ const TopNavigation = () => {
                   fontSize: '0.875rem'
                 }}
               >
-                JD
+                {getUserInitials()}
               </Avatar>
             </IconButton>
           </Tooltip>
@@ -248,11 +279,20 @@ const TopNavigation = () => {
           {/* User Info */}
           <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #e5e7eb' }}>
             <Typography variant="body2" fontWeight={600}>
-              John Doe
+              {user?.full_name || 'User'}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              john.doe@aialchemy.com
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              {user?.email || 'user@example.com'}
             </Typography>
+            <Box sx={{ mt: 1 }}>
+              <Chip
+                label={user?.role?.toUpperCase() || 'USER'}
+                size="small"
+                color={getRoleColor(user?.role)}
+                variant="outlined"
+                sx={{ fontSize: '0.7rem', height: 20 }}
+              />
+            </Box>
           </Box>
 
           <MenuItem onClick={handleMenuClose}>
@@ -274,7 +314,7 @@ const TopNavigation = () => {
             Account Settings
           </MenuItem>
           
-          <MenuItem onClick={handleMenuClose}>
+          <MenuItem onClick={handleLogout}>
             <ListItemIcon>
               <LogoutIcon fontSize="small" />
             </ListItemIcon>

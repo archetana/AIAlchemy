@@ -7,7 +7,9 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
+  baseURL: process.env.REACT_APP_API_BASE_URL ? 
+    `${process.env.REACT_APP_API_BASE_URL}/api` : 
+    '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -30,18 +32,63 @@ api.interceptors.request.use(
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     console.error('API Error:', error.response?.data || error.message);
     
     // Handle specific error cases
     if (error.response?.status === 401) {
-      // Unauthorized - redirect to login when auth is implemented
-      localStorage.removeItem('authToken');
+      // Unauthorized - try to refresh token
+      const refreshToken = localStorage.getItem('refreshToken');
+      
+      if (refreshToken && !error.config._retry) {
+        error.config._retry = true;
+        
+        try {
+          const response = await api.post('/auth/refresh', { refresh_token: refreshToken });
+          const { access_token } = response.data;
+          
+          localStorage.setItem('authToken', access_token);
+          error.config.headers.Authorization = `Bearer ${access_token}`;
+          
+          return api(error.config);
+        } catch (refreshError) {
+          // Refresh failed, redirect to login
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
+          window.location.href = '/login';
+        }
+      } else {
+        // No refresh token or refresh failed
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);
   }
 );
+
+// Authentication API calls
+export const authApi = {
+  // User login
+  login: (credentials) => api.post('/auth/login', credentials),
+  
+  // User registration
+  register: (userData) => api.post('/auth/register', userData),
+  
+  // User logout
+  logout: () => api.post('/auth/logout'),
+  
+  // Refresh JWT token
+  refreshToken: (tokenData) => api.post('/auth/refresh', tokenData),
+  
+  // Get current user profile
+  getCurrentUser: () => api.get('/auth/me'),
+  
+  // Update user profile
+  updateProfile: (profileData) => api.put('/auth/me', profileData),
+};
 
 // Dashboard API calls
 export const dashboardApi = {
