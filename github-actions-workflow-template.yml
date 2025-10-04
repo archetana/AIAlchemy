@@ -1,3 +1,12 @@
+# 🚀 GitHub Actions Workflow Template for AIAlchemy
+# 
+# MANUAL SETUP REQUIRED:
+# 1. Copy this file to .github/workflows/deploy-production.yml in your repository
+# 2. Add the required secrets to your GitHub repository (see GITHUB_SECRETS_SETUP.md)
+# 3. Push to main branch to trigger deployment
+#
+# This file cannot be automatically committed due to GitHub App workflow permissions.
+
 name: Deploy to Production with GCS
 
 on:
