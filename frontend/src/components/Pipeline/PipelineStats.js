@@ -37,15 +37,18 @@ const PipelineStats = ({ pipelineData, loading }) => {
   // Convert bottlenecks to array for rendering - handle both dict and array formats
   // This hook must always run, regardless of loading state
   const bottleneckArray = React.useMemo(() => {
-    if (!bottlenecks) return [];
+    // Early return for null/undefined
+    if (!bottlenecks) {
+      return [];
+    }
     
-    // If already an array, return as is (for backward compatibility)
+    // Handle array format (backward compatibility)
     if (Array.isArray(bottlenecks)) {
       return bottlenecks;
     }
     
-    // If it's a dictionary (expected format), convert to array
-    if (typeof bottlenecks === 'object') {
+    // Handle object format (convert to array)
+    if (typeof bottlenecks === 'object' && bottlenecks !== null) {
       return Object.entries(bottlenecks).map(([stage, count]) => ({
         stage,
         count,
@@ -54,6 +57,7 @@ const PipelineStats = ({ pipelineData, loading }) => {
       }));
     }
     
+    // Default fallback
     return [];
   }, [bottlenecks]);
 
