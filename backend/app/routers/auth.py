@@ -18,6 +18,7 @@ from app.schemas import (
 )
 from app.auth.jwt_handler import jwt_handler
 from app.auth.password_utils import password_utils, hash_password, verify_password
+from app.auth.simple_password import simple_password_utils, simple_hash_password, simple_verify_password
 from app.auth.auth_dependencies import (
     get_current_user, get_refresh_token_user, AuthenticationError
 )
@@ -60,37 +61,52 @@ async def register(
                 detail="Email address already registered"
             )
         
-        # Validate and hash password with fallback mechanism
+        # Validate and hash password with multiple fallback mechanisms
+        password_validation = None
+        
+        # Method 1: Try passlib-based password utils (primary)
         try:
             password_validation = password_utils.validate_and_hash_password(user_data.password)
+            logger.info("Primary passlib password hashing succeeded")
         except Exception as e:
-            logger.error("Primary password hashing failed, trying fallback", error=str(e))
-            # Fallback: validate manually and use direct hash_password function
-            validation_result = password_utils.validator.validate_password(user_data.password)
-            if not validation_result["valid"]:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "message": "Password does not meet security requirements",
-                        "errors": validation_result["errors"]
-                    }
-                )
+            logger.warning("Primary passlib password hashing failed, trying simple bcrypt", error=str(e))
             
-            # Try direct hashing as fallback
+            # Method 2: Try simple bcrypt utils (fallback 1)
             try:
-                hashed_password = hash_password(user_data.password)
-                password_validation = {
-                    "valid": True,
-                    "hashed_password": hashed_password,
-                    "errors": []
-                }
-                logger.info("Fallback password hashing succeeded")
-            except Exception as hash_error:
-                logger.error("Both primary and fallback password hashing failed", error=str(hash_error))
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Password processing failed. Please try again or contact support."
-                )
+                password_validation = simple_password_utils.validate_and_hash_password(user_data.password)
+                logger.info("Simple bcrypt password hashing succeeded")
+            except Exception as e2:
+                logger.warning("Simple bcrypt hashing failed, trying direct approach", error=str(e2))
+                
+                # Method 3: Manual validation + direct bcrypt (fallback 2)
+                try:
+                    validation_result = simple_password_utils.validator.validate_password(user_data.password)
+                    if not validation_result["valid"]:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail={
+                                "message": "Password does not meet security requirements",
+                                "errors": validation_result["errors"]
+                            }
+                        )
+                    
+                    # Try direct hashing
+                    hashed_password = simple_hash_password(user_data.password)
+                    password_validation = {
+                        "valid": True,
+                        "hashed_password": hashed_password,
+                        "errors": []
+                    }
+                    logger.info("Direct bcrypt password hashing succeeded")
+                except Exception as e3:
+                    logger.error("All password hashing methods failed", 
+                               primary_error=str(e), 
+                               simple_error=str(e2), 
+                               direct_error=str(e3))
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Password processing failed. Please try again or contact support."
+                    )
         
         if not password_validation["valid"]:
             logger.warning("Invalid password in registration", errors=password_validation["errors"])
@@ -175,9 +191,32 @@ async def login(
         user_result = await db.execute(user_query)
         user = user_result.scalar_one_or_none()
         
-        # Check if user exists and password is correct
-        if not user or not verify_password(login_data.password, user.hashed_password):
-            logger.warning("Failed login attempt", email=login_data.email)
+        # Check if user exists and password is correct (with fallback verification)
+        if not user:
+            logger.warning("Failed login attempt - user not found", email=login_data.email)
+            raise AuthenticationError("Invalid email or password")
+        
+        # Try multiple password verification methods
+        password_valid = False
+        try:
+            # Method 1: Try passlib verification (primary)
+            password_valid = verify_password(login_data.password, user.hashed_password)
+            if password_valid:
+                logger.info("Primary passlib password verification succeeded")
+        except Exception as e:
+            logger.warning("Primary password verification failed, trying simple bcrypt", error=str(e))
+            
+        if not password_valid:
+            try:
+                # Method 2: Try simple bcrypt verification (fallback)
+                password_valid = simple_verify_password(login_data.password, user.hashed_password)
+                if password_valid:
+                    logger.info("Simple bcrypt password verification succeeded")
+            except Exception as e:
+                logger.warning("Simple password verification failed", error=str(e))
+        
+        if not password_valid:
+            logger.warning("Failed login attempt - invalid password", email=login_data.email)
             raise AuthenticationError("Invalid email or password")
         
         # Check if account is active
