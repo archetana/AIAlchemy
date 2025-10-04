@@ -29,7 +29,8 @@ async def add_sample_data():
     try:
         print("📊 Adding sample startup data...")
         from app.database import async_session_local
-        from app.models import StartupApplication, ApplicationStatus, FundingStage, Industry
+        from app.models import StartupApplication, ApplicationStatus, FundingStage, Industry, User, UserRole
+        from app.auth.password_utils import hash_password
         from sqlalchemy import select
         
         async with async_session_local() as session:
@@ -110,6 +111,43 @@ async def add_sample_data():
                 
                 await session.commit()
                 print(f"✅ Added {len(sample_industries)} industries and {len(sample_apps)} startup applications")
+                
+                # Add sample users for testing
+                print("👤 Adding sample users...")
+                
+                sample_users = [
+                    User(
+                        email="test@example.com",
+                        hashed_password=hash_password("TempPass123!"),
+                        full_name="Test User",
+                        title="Developer", 
+                        role=UserRole.ADMIN,
+                        is_active=True
+                    ),
+                    User(
+                        email="admin@aialchemy.com",
+                        hashed_password=hash_password("AdminPass123!"),
+                        full_name="Admin User",
+                        title="Administrator",
+                        role=UserRole.ADMIN,
+                        is_active=True
+                    ),
+                    User(
+                        email="analyst@aialchemy.com", 
+                        hashed_password=hash_password("AnalystPass123!"),
+                        full_name="AI Analyst",
+                        title="Senior AI Analyst",
+                        role=UserRole.ANALYST,
+                        is_active=True
+                    )
+                ]
+                
+                for user in sample_users:
+                    session.add(user)
+                    
+                await session.commit()
+                print(f"✅ Added {len(sample_users)} sample users")
+                
             else:
                 print(f"ℹ️ Database already has {len(existing)} startup applications")
                 
