@@ -12,6 +12,66 @@ class BaseSchema(BaseModel):
     class Config:
         from_attributes = True
 
+# Authentication Schemas
+class LoginRequest(BaseModel):
+    """User login request"""
+    email: EmailStr
+    password: str
+
+class LoginResponse(BaseModel):
+    """User login response with tokens"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: 'UserProfile'
+
+class RefreshTokenRequest(BaseModel):
+    """Refresh token request"""
+    refresh_token: str
+
+class RefreshTokenResponse(BaseModel):
+    """Refresh token response"""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+class RegisterRequest(BaseModel):
+    """User registration request"""
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    full_name: str = Field(..., min_length=1, max_length=255)
+    title: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=50)
+
+class RegisterResponse(BaseModel):
+    """User registration response"""
+    message: str
+    user: 'UserProfile'
+
+class PasswordChangeRequest(BaseModel):
+    """Password change request"""
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+class PasswordResetRequest(BaseModel):
+    """Password reset request"""
+    email: EmailStr
+
+class UserProfile(BaseModel):
+    """User profile information (no sensitive data)"""
+    id: int
+    email: EmailStr
+    full_name: str
+    title: Optional[str] = None
+    phone: Optional[str] = None
+    role: UserRole
+    is_active: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 # User Schemas
 class UserBase(BaseModel):
     email: EmailStr
@@ -21,7 +81,7 @@ class UserBase(BaseModel):
     role: UserRole = UserRole.ANALYST
 
 class UserCreate(UserBase):
-    pass
+    password: str = Field(..., min_length=8, max_length=128)
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
