@@ -12,17 +12,26 @@
 
 ### Production Deployment (Recommended)
 
-Deploy to Google Cloud Platform with one command:
-
+**Step 1: Set up Google Cloud Storage**
 ```bash
-# Clone and deploy with nginx gateway (no domain required)
+# Clone the repository
 git clone https://github.com/archetana/AIAlchemy.git
 cd AIAlchemy
+
+# Validate GCS setup (creates instructions if needed)
+python3 setup-gcs-complete.py
+```
+
+**Step 2: Deploy to Google Cloud Platform**
+```bash
+# Authenticate with Google Cloud
 gcloud auth login && gcloud auth application-default login
+
+# Deploy with nginx gateway (no domain required)
 ./deploy-nginx-gateway.sh
 ```
 
-**What you get**: Backend API + Frontend Dashboard + Nginx Gateway = Single URL (~$25/month)
+**What you get**: Backend API + Frontend Dashboard + Nginx Gateway + GCS Storage = Single URL (~$25/month)
 
 ### Local Development
 
@@ -162,14 +171,59 @@ AIAlchemy/
 
 ## ⚙️ Configuration
 
+### Google Cloud Storage Setup (Required)
+
+AIAlchemy requires Google Cloud Storage for document uploads and processing:
+
+**1. Automatic Setup Validation**
+```bash
+# Check configuration status and get setup instructions
+python3 setup-gcs-complete.py
+```
+
+**2. Manual GCS Setup (if needed)**
+```bash
+# Set your project ID
+export PROJECT_ID="your-gcp-project-id"
+
+# Create service account and generate key
+gcloud iam service-accounts create aialchemy-storage \
+    --display-name="AIAlchemy Storage Service Account"
+
+gcloud iam service-accounts keys create ./gcs-service-account-key.json \
+    --iam-account=aialchemy-storage@$PROJECT_ID.iam.gserviceaccount.com
+
+# Move key to backend directory
+mv ./gcs-service-account-key.json backend/
+
+# Grant storage permissions
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:aialchemy-storage@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/storage.objectAdmin"
+
+# Create storage bucket
+gsutil mb -p $PROJECT_ID -c STANDARD -l us-central1 gs://aialchemy-uploads
+```
+
+**3. GitHub Secrets (for CI/CD)**
+Add these secrets to your GitHub repository for automated deployment:
+- `GCS_SERVICE_ACCOUNT_KEY` - Entire JSON content from service account key
+- `GOOGLE_CLOUD_PROJECT` - Your GCP project ID  
+- `GCS_BUCKET_NAME` - Your GCS bucket name (e.g., aialchemy-uploads)
+- `SECRET_KEY` - Generate with `openssl rand -hex 32`
+- `JWT_SECRET_KEY` - Generate with `openssl rand -hex 32`
+
 ### Backend Configuration
 ```bash
 # Required environment variables
 DATABASE_URL=sqlite:///./aialchemy.db
 GOOGLE_CLOUD_PROJECT=your-project-id
-GEMINI_API_KEY=your-gemini-key
+GOOGLE_CLOUD_STORAGE_BUCKET=aialchemy-uploads
+USE_GOOGLE_CLOUD_STORAGE=true
+GOOGLE_APPLICATION_CREDENTIALS=./gcs-service-account-key.json
 
-# Optional external APIs
+# Optional external APIs  
+GEMINI_API_KEY=your-gemini-key
 CRUNCHBASE_API_KEY=your-crunchbase-key
 LINKEDIN_API_KEY=your-linkedin-key
 ```
@@ -238,8 +292,34 @@ We welcome contributions! Please see our **[Contributing Guide](./CONTRIBUTING.m
 - **[💬 Discussions](https://github.com/archetana/AIAlchemy/discussions)** - Community discussions
 
 ### Troubleshooting
+
+**Common Issues:**
+
+🔧 **Frontend Health Check Timeout**
+```bash
+# Fixed in latest version - port mismatch resolved
+# Ensure GitHub workflow uses port 8080 (not 3000)
+```
+
+🔧 **GCS Permission Errors**
+```bash
+# Verify service account has correct permissions
+gcloud projects get-iam-policy $PROJECT_ID \
+  --filter="bindings.members:aialchemy-storage@$PROJECT_ID.iam.gserviceaccount.com"
+```
+
+🔧 **Missing Dependencies**
+```bash
+# Backend missing dependencies
+cd backend && pip install -r requirements.txt
+
+# Frontend build issues  
+cd frontend && npm install --production=false
+```
+
+**Additional Resources:**
 - **[Deployment Issues](./docs/deployment.md#-troubleshooting)** - Common deployment problems
-- **[Database Problems](./docs/deployment.md#database-configuration)** - Database initialization issues
+- **[Database Problems](./docs/deployment.md#database-configuration)** - Database initialization issues  
 - **[API Errors](./docs/API-ENDPOINTS.md)** - API endpoint troubleshooting
 
 ## 📄 License
