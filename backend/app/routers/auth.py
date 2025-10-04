@@ -60,17 +60,54 @@ async def register(
                 detail="Email address already registered"
             )
         
-        # Validate and hash password
-        password_validation = password_utils.validate_and_hash_password(user_data.password)
+        # Validate and hash password with fallback mechanism
+        try:
+            password_validation = password_utils.validate_and_hash_password(user_data.password)
+        except Exception as e:
+            logger.error("Primary password hashing failed, trying fallback", error=str(e))
+            # Fallback: validate manually and use direct hash_password function
+            validation_result = password_utils.validator.validate_password(user_data.password)
+            if not validation_result["valid"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Password does not meet security requirements",
+                        "errors": validation_result["errors"]
+                    }
+                )
+            
+            # Try direct hashing as fallback
+            try:
+                hashed_password = hash_password(user_data.password)
+                password_validation = {
+                    "valid": True,
+                    "hashed_password": hashed_password,
+                    "errors": []
+                }
+                logger.info("Fallback password hashing succeeded")
+            except Exception as hash_error:
+                logger.error("Both primary and fallback password hashing failed", error=str(hash_error))
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Password processing failed. Please try again or contact support."
+                )
         
         if not password_validation["valid"]:
             logger.warning("Invalid password in registration", errors=password_validation["errors"])
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Password does not meet security requirements",
+                    "message": "Password does not meet security requirements", 
                     "errors": password_validation["errors"]
                 }
+            )
+        
+        # Double-check that password was actually hashed
+        if "hashed_password" not in password_validation:
+            logger.error("Password validation succeeded but no hashed password generated")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Password processing incomplete. Please try again."
             )
         
         # Create new user

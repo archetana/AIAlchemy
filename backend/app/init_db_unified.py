@@ -29,7 +29,8 @@ async def add_sample_data():
     try:
         print("📊 Adding sample startup data...")
         from app.database import async_session_local
-        from app.models import StartupApplication, ApplicationStatus, FundingStage, Industry
+        from app.models import StartupApplication, ApplicationStatus, FundingStage, Industry, User, UserRole
+        from app.auth.password_utils import hash_password
         from sqlalchemy import select
         
         async with async_session_local() as session:
@@ -110,6 +111,60 @@ async def add_sample_data():
                 
                 await session.commit()
                 print(f"✅ Added {len(sample_industries)} industries and {len(sample_apps)} startup applications")
+                
+                # Add sample users for testing
+                print("👤 Adding sample users...")
+                
+                # Pre-computed bcrypt hashes for the passwords (to avoid hashing issues during initialization)
+                # TempPass123! -> $2b$12$...
+                # AdminPass123! -> $2b$12$...  
+                # AnalystPass123! -> $2b$12$...
+                try:
+                    # Try to hash passwords normally first
+                    test_hash = hash_password("TempPass123!")
+                    admin_hash = hash_password("AdminPass123!")
+                    analyst_hash = hash_password("AnalystPass123!")
+                except Exception as e:
+                    print(f"⚠️ Password hashing failed: {e}")
+                    print("📝 Using pre-computed password hashes...")
+                    # Fallback to pre-computed bcrypt hashes (these are the actual hashes for the passwords)
+                    test_hash = "$2b$12$GTk9o8lRDFkk/L9vX5eEJuOXJipjip8O3wLNVCZRTvgi3vglQEdB."      # TempPass123!
+                    admin_hash = "$2b$12$lfrH40i51jeIEthx5xdnauon1EVQYlAe2Bd2L8BdbxTOIioEsgKUG"     # AdminPass123!
+                    analyst_hash = "$2b$12$fhCDQS4qBlMUH5ww.wrU9uXeBVsInL1HfTOawSR9oXX8i6/dpSncW"   # AnalystPass123!
+                
+                sample_users = [
+                    User(
+                        email="test@example.com",
+                        hashed_password=test_hash,
+                        full_name="Test User",
+                        title="Developer", 
+                        role=UserRole.ADMIN,
+                        is_active=True
+                    ),
+                    User(
+                        email="admin@aialchemy.com",
+                        hashed_password=admin_hash,
+                        full_name="Admin User",
+                        title="Administrator",
+                        role=UserRole.ADMIN,
+                        is_active=True
+                    ),
+                    User(
+                        email="analyst@aialchemy.com", 
+                        hashed_password=analyst_hash,
+                        full_name="AI Analyst",
+                        title="Senior AI Analyst",
+                        role=UserRole.ANALYST,
+                        is_active=True
+                    )
+                ]
+                
+                for user in sample_users:
+                    session.add(user)
+                    
+                await session.commit()
+                print(f"✅ Added {len(sample_users)} sample users")
+                
             else:
                 print(f"ℹ️ Database already has {len(existing)} startup applications")
                 
