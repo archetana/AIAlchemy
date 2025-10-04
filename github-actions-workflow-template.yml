@@ -109,21 +109,21 @@ jobs:
           --allow-unauthenticated \
           --memory 2Gi \
           --cpu 1 \
+          --timeout 900 \
           --min-instances 0 \
           --max-instances 10 \
           --port 8000 \
-          --set-env-vars="DATABASE_URL=sqlite:///./aialchemy.db" \
-          --set-env-vars="USE_GOOGLE_CLOUD_STORAGE=true" \
-          --set-env-vars="GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GCS_BUCKET_NAME }}" \
-          --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
-          --set-env-vars="SECRET_KEY=${{ secrets.SECRET_KEY }}" \
-          --set-env-vars="JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
-          --set-env-vars="ENVIRONMENT=production" \
-          --set-env-vars="DEBUG=false" \
-          --set-env-vars="GCS_SERVICE_ACCOUNT_KEY_BASE64=$(cat gcs_key_base64.txt)"
+          --set-env-vars="DATABASE_URL=sqlite+aiosqlite:///./aialchemy.db,USE_GOOGLE_CLOUD_STORAGE=true,GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GCS_BUCKET_NAME }},GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},SECRET_KEY=${{ secrets.SECRET_KEY }},JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }},ENVIRONMENT=production,DEBUG=false,BUCKET_APP_STORAGE=${{ secrets.GCS_BUCKET_NAME }},VERTEX_AI_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},VERTEX_AI_LOCATION=us-central1,GCS_SERVICE_ACCOUNT_KEY_BASE64=$(cat gcs_key_base64.txt)"
         
         # Clean up temporary file
         rm gcs_key_base64.txt
+
+    - name: Set IAM policy for backend
+      run: |
+        gcloud run services add-iam-policy-binding ${{ env.BACKEND_SERVICE }} \
+          --region=${{ env.REGION }} \
+          --member=allUsers \
+          --role=roles/run.invoker
 
     - name: Build and push frontend
       run: |
