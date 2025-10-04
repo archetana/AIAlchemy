@@ -25,30 +25,17 @@ import {
 } from '@mui/icons-material';
 
 const PipelineStats = ({ pipelineData, loading }) => {
-  if (loading || !pipelineData) {
-    return (
-      <Card elevation={2}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Pipeline Analytics
-          </Typography>
-          <Box display="flex" justifyContent="center" py={4}>
-            <CircularProgress />
-          </Box>
-        </CardContent>
-      </Card>
-    );
-  }
-
+  // Extract data with defaults - always do this before any early returns
   const {
     stages = {},
     conversion_rates = {},
     avg_days_per_stage = {},
     bottlenecks = {},
     weekly_throughput = 0
-  } = pipelineData;
+  } = pipelineData || {};
 
   // Convert bottlenecks to array for rendering - handle both dict and array formats
+  // This hook must always run, regardless of loading state
   const bottleneckArray = React.useMemo(() => {
     if (!bottlenecks) return [];
     
@@ -69,6 +56,22 @@ const PipelineStats = ({ pipelineData, loading }) => {
     
     return [];
   }, [bottlenecks]);
+
+  // Early return AFTER all hooks have been called
+  if (loading || !pipelineData) {
+    return (
+      <Card elevation={2}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Pipeline Analytics
+          </Typography>
+          <Box display="flex" justifyContent="center" py={4}>
+            <CircularProgress />
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const totalApplications = Object.values(stages).reduce((sum, count) => sum + count, 0);
   const completionRate = totalApplications > 0 ? ((stages.completed || 0) / totalApplications * 100) : 0;

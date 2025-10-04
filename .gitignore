@@ -76,6 +76,7 @@ docker-compose.override.yml
 # Google Cloud
 google-cloud-key.json
 service-account-key.json
+gcs-service-account-key.json
 .gcp/
 credentials.json
 
