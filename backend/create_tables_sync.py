@@ -25,7 +25,11 @@ def create_tables_sync():
         
         # Convert async URL to sync for table creation
         if "sqlite+aiosqlite" in database_url:
-            sync_url = database_url.replace("sqlite+aiosqlite://", "sqlite:///")
+            # Handle both formats: sqlite+aiosqlite:///path and sqlite+aiosqlite://path
+            if "sqlite+aiosqlite:///" in database_url:
+                sync_url = database_url.replace("sqlite+aiosqlite:///", "sqlite:///")
+            else:
+                sync_url = database_url.replace("sqlite+aiosqlite://", "sqlite:///")
         elif "postgresql+asyncpg" in database_url:
             sync_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
         else:
