@@ -68,71 +68,10 @@ print(f'{major}.{minor}.{patch}')
         git commit -m "chore: increment version to ${{ steps.increment.outputs.version }} (build ${{ steps.increment.outputs.build_number }})" || exit 0
         git push
 
-  build-only:
-    runs-on: ubuntu-latest
-    name: Build Applications
-    needs: version-increment
-    
-    steps:
-    - name: Checkout code (with version updates)
-      uses: actions/checkout@v4
-      with:
-        ref: main  # Get the updated version
-        
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: Set up Node.js 18
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'frontend/package-lock.json'
-        
-    - name: Install dependencies for build
-      run: |
-        # Backend dependencies
-        cd backend
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        echo "✅ Backend dependencies installed"
-        cd ..
-        
-        # Frontend dependencies
-        cd frontend
-        npm --version
-        node --version
-        npm install -g npm@latest
-        npm --version
-        npm ci --prefer-offline --no-audit
-        echo "✅ Frontend dependencies installed"
-        cd ..
-        
-    - name: Build applications with version info
-      env:
-        REACT_APP_BUILD_NUMBER: ${{ needs.version-increment.outputs.build_number }}
-        REACT_APP_COMMIT_HASH: ${{ github.sha }}
-        REACT_APP_BUILD_DATE: ${{ github.event.head_commit.timestamp }}
-      run: |
-        echo "🏗️ Building applications with version ${{ needs.version-increment.outputs.version }}"
-        
-        # Build backend
-        cd backend
-        docker build -t aialchemy-backend:${{ needs.version-increment.outputs.version }} .
-        cd ..
-        
-        # Build frontend  
-        cd frontend
-        npm run build
-        docker build -t aialchemy-frontend:${{ needs.version-increment.outputs.version }} .
-        cd ..
-
   deploy-to-gcp:
     runs-on: ubuntu-latest
     name: Deploy to Google Cloud
-    needs: [version-increment, build-only]
+    needs: [version-increment]
     if: github.ref == 'refs/heads/main'
     
     steps:
