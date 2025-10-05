@@ -82,8 +82,12 @@ jobs:
       run: |
         cd frontend
         npm --version
-        # Use npm install if npm ci fails with lockfile version issues
-        npm ci || npm install
+        node --version
+        # Ensure npm is up to date for lockfileVersion 3 support
+        npm install -g npm@latest
+        npm --version
+        # Use npm ci with proper lockfile version support
+        npm ci --prefer-offline --no-audit
         npx playwright install --with-deps
         
     - name: Run frontend tests
@@ -139,7 +143,12 @@ jobs:
         # Frontend dependencies
         cd frontend
         npm --version
-        npm ci || npm install
+        node --version
+        # Ensure npm is up to date for lockfileVersion 3 support
+        npm install -g npm@latest
+        npm --version
+        # Use npm ci with proper lockfile version support
+        npm ci --prefer-offline --no-audit
         npx playwright install --with-deps chromium
         cd ..
         
