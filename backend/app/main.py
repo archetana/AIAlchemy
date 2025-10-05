@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 import os
 
 # Import routers
-from app.routers import dashboard, startups, pipeline, memos, uploads, settings, auth
+from app.routers import dashboard, startups, pipeline, memos, uploads, settings, auth, document_processing
 from app.core.database import database_manager
 from app.auth.auth_middleware import AuthenticationMiddleware, SecurityHeadersMiddleware
 
@@ -82,6 +82,7 @@ app.include_router(pipeline.router)
 app.include_router(memos.router)
 app.include_router(uploads.router)
 app.include_router(settings.router)
+app.include_router(document_processing.router)  # New document processing pipeline
 
 @app.get("/")
 async def root():
@@ -98,7 +99,8 @@ async def root():
             "pipeline": "/api/pipeline/stats", 
             "memos": "/api/memos/",
             "uploads": "/api/uploads/",
-            "settings": "/api/settings/"
+            "settings": "/api/settings/",
+            "document_processing": "/api/v1/document-processing/"
         },
         "features": [
             "Startup application management",
