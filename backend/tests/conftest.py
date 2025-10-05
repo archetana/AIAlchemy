@@ -43,14 +43,62 @@ async def test_app():
     
     class TestSettings:
         def __init__(self):
+            # Application Settings
+            self.app_name = "AIAlchemy-Test"
+            self.app_version = "1.0.0-test"
+            self.environment = "test"
+            self.debug = True
+            self.secret_key = "test-secret-key-12345"
+            
+            # Security
+            self.allowed_hosts = ["localhost", "127.0.0.1"]
+            self.cors_origins = ["http://localhost:3000", "http://test"]
+            
+            # Database Configuration
             self.database_url = test_db_url
             self.is_development = True
             self.database_pool_size = 1
             self.database_max_overflow = 0
-            self.secret_key = "test-secret-key"
-            self.jwt_secret_key = "test-jwt-secret"
+            
+            # Redis Configuration  
+            self.redis_url = "redis://localhost:6379/0"
+            
+            # Google Cloud Configuration (test values)
+            self.google_cloud_project = "test-project"
+            self.google_application_credentials = None
+            
+            # Vertex AI Configuration
+            self.vertex_ai_project = "test-project"
+            self.vertex_ai_location = "us-central1"
+            
+            # Storage Configuration
+            self.bucket_app_storage = "test-bucket"
+            self.gcs_service_account_key_base64 = None
+            
+            # JWT Configuration
+            self.jwt_secret_key = "test-jwt-secret-12345"
             self.jwt_algorithm = "HS256"
             self.jwt_expiration_hours = 24
+            
+            # File Upload Configuration
+            self.max_upload_size = 100 * 1024 * 1024  # 100MB
+            self.allowed_file_extensions = [".pdf", ".docx", ".pptx", ".xlsx", ".txt"]
+            
+            # API Configuration
+            self.rate_limit_per_minute = 60
+            self.rate_limit_burst = 10
+            
+            # Email Configuration (test values)
+            self.email_smtp_server = "test-smtp.example.com"
+            self.email_smtp_port = 587
+            self.email_username = "test@example.com"
+            self.email_password = "test-password"
+            self.email_from_address = "noreply@test.example.com"
+            
+            # External API Keys (test values)
+            self.openai_api_key = "test-openai-key"
+            self.anthropic_api_key = "test-anthropic-key"
+            self.gemini_api_key = "test-gemini-key"
     
     app.core.config.get_settings = lambda: TestSettings()
     

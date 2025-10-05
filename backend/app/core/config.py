@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     app_version: str = Field(default="1.0.0", env="APP_VERSION")
     environment: str = Field(default="development", env="ENVIRONMENT")
     debug: bool = Field(default=False, env="DEBUG")
-    secret_key: str = Field(..., env="SECRET_KEY")
+    secret_key: str = Field(default="development-secret-key", env="SECRET_KEY")
     
     # Security
     allowed_hosts: List[str] = Field(
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     )
     
     # Database Configuration
-    database_url: str = Field(..., env="DATABASE_URL")
+    database_url: str = Field(default="sqlite+aiosqlite:///./test.db", env="DATABASE_URL")
     database_pool_size: int = Field(default=10, env="DATABASE_POOL_SIZE")
     database_max_overflow: int = Field(default=20, env="DATABASE_MAX_OVERFLOW")
     
@@ -41,13 +41,13 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
     
     # Google Cloud Configuration
-    google_cloud_project: str = Field(..., env="GOOGLE_CLOUD_PROJECT")
+    google_cloud_project: str = Field(default="test-project", env="GOOGLE_CLOUD_PROJECT")
     google_application_credentials: Optional[str] = Field(
         default=None, env="GOOGLE_APPLICATION_CREDENTIALS"
     )
     
     # Vertex AI Configuration
-    vertex_ai_project: str = Field(..., env="VERTEX_AI_PROJECT")
+    vertex_ai_project: str = Field(default="test-project", env="VERTEX_AI_PROJECT")
     vertex_ai_location: str = Field(default="us-central1", env="VERTEX_AI_LOCATION")
     
     # Document AI Configuration
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     news_api_key: Optional[str] = Field(default=None, env="NEWS_API_KEY")
     
     # JWT Configuration
-    jwt_secret_key: str = Field(..., env="JWT_SECRET_KEY")
+    jwt_secret_key: str = Field(default="development-jwt-secret", env="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
     jwt_expiration_hours: int = Field(default=24, env="JWT_EXPIRATION_HOURS")
     
@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     )
     
     # Storage Configuration
-    bucket_app_storage: str = Field(..., env="BUCKET_APP_STORAGE")
+    bucket_app_storage: str = Field(default="aialchemy-dev-bucket", env="BUCKET_APP_STORAGE")
     bucket_ml_models: Optional[str] = Field(default=None, env="BUCKET_ML_MODELS")
     bucket_documents: Optional[str] = Field(default=None, env="BUCKET_DOCUMENTS")
     

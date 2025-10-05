@@ -37,6 +37,15 @@ jobs:
         pip install pytest pytest-asyncio pytest-httpx
         
     - name: Run backend tests
+      env:
+        ENVIRONMENT: test
+        SECRET_KEY: test-secret-key-for-ci
+        JWT_SECRET_KEY: test-jwt-secret-for-ci
+        DATABASE_URL: sqlite+aiosqlite:///./test.db
+        GOOGLE_CLOUD_PROJECT: test-project
+        VERTEX_AI_PROJECT: test-project
+        BUCKET_APP_STORAGE: test-bucket
+        USE_GOOGLE_CLOUD_STORAGE: false
       run: |
         cd backend
         python run_tests.py
@@ -60,8 +69,14 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'frontend/package-lock.json'
+        
+    - name: Cache npm dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
         
     - name: Install frontend dependencies
       run: |
@@ -101,8 +116,14 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'frontend/package-lock.json'
+        
+    - name: Cache npm dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
         
     - name: Install all dependencies
       run: |
@@ -120,6 +141,15 @@ jobs:
         cd ..
         
     - name: Run comprehensive test suite
+      env:
+        ENVIRONMENT: test
+        SECRET_KEY: test-secret-key-for-ci
+        JWT_SECRET_KEY: test-jwt-secret-for-ci
+        DATABASE_URL: sqlite+aiosqlite:///./test.db
+        GOOGLE_CLOUD_PROJECT: test-project
+        VERTEX_AI_PROJECT: test-project
+        BUCKET_APP_STORAGE: test-bucket
+        USE_GOOGLE_CLOUD_STORAGE: false
       run: |
         python run_all_tests.py
         
