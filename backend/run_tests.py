@@ -144,7 +144,7 @@ class TestRunner:
    Total Tests: {total_tests}
    ✅ Passed: {passed_tests}
    ❌ Failed: {failed_tests}
-   📊 Success Rate: {(passed_tests/total_tests*100):.1f}% if total_tests > 0 else 100}%
+   📊 Success Rate: {(passed_tests/total_tests*100):.1f if total_tests > 0 else 100.0}%
 
 {'='*60}
 📋 Detailed Results:
