@@ -40,19 +40,8 @@ jobs:
         # Run version increment
         python3 scripts/increment-version.py patch
         
-        # Get the new version
-        VERSION=$(python3 -c "
-import re
-with open('./src/config/version.js', 'r') as f:
-    content = f.read()
-major_match = re.search(r'major:\s*(\d+)', content)
-minor_match = re.search(r'minor:\s*(\d+)', content)
-patch_match = re.search(r'patch:\s*(\d+)', content)
-major = int(major_match.group(1)) if major_match else 1
-minor = int(minor_match.group(1)) if minor_match else 0
-patch = int(patch_match.group(1)) if patch_match else 0
-print(f'{major}.{minor}.{patch}')
-        ")
+        # Get the new version using awk (more reliable)
+        VERSION=$(awk '/major:/{print $2} /minor:/{print $2} /patch:/{print $2}' ./src/config/version.js | tr -d ',' | head -3 | paste -sd "." -)
         
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
