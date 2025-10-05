@@ -1,0 +1,202 @@
+name: Comprehensive Test Suite
+
+on:
+  push:
+    branches: [ main, genspark_ai_developer ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    name: Backend API Tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-httpx
+        
+    - name: Run backend tests
+      run: |
+        cd backend
+        python run_tests.py
+        
+    - name: Upload backend test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: backend-test-results
+        path: backend/test_report.txt
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    name: Frontend UI Tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+        npx playwright install --with-deps
+        
+    - name: Run frontend tests
+      run: |
+        cd frontend
+        npx playwright test --reporter=json --output-dir=test-results
+        
+    - name: Upload frontend test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: frontend-test-results
+        path: |
+          frontend/test-results/
+          frontend/playwright-report/
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: Full Integration Tests
+    needs: [backend-tests, frontend-tests]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Set up Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install all dependencies
+      run: |
+        # Backend dependencies
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-httpx requests
+        cd ..
+        
+        # Frontend dependencies
+        cd frontend
+        npm ci
+        npx playwright install --with-deps chromium
+        cd ..
+        
+    - name: Run comprehensive test suite
+      run: |
+        python run_all_tests.py
+        
+    - name: Upload comprehensive test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: comprehensive-test-results
+        path: comprehensive_test_report.txt
+
+  deployment-readiness:
+    runs-on: ubuntu-latest
+    name: Deployment Readiness Check
+    needs: [backend-tests, frontend-tests, integration-tests]
+    if: always()
+    
+    steps:
+    - name: Download all test artifacts
+      uses: actions/download-artifact@v3
+      
+    - name: Check deployment readiness
+      run: |
+        echo "🎯 Deployment Readiness Assessment"
+        echo "=================================="
+        
+        # Check if all test jobs passed
+        BACKEND_STATUS="${{ needs.backend-tests.result }}"
+        FRONTEND_STATUS="${{ needs.frontend-tests.result }}"
+        INTEGRATION_STATUS="${{ needs.integration-tests.result }}"
+        
+        echo "Backend Tests: $BACKEND_STATUS"
+        echo "Frontend Tests: $FRONTEND_STATUS"
+        echo "Integration Tests: $INTEGRATION_STATUS"
+        
+        # Determine overall readiness
+        if [[ "$BACKEND_STATUS" == "success" && "$FRONTEND_STATUS" == "success" && "$INTEGRATION_STATUS" == "success" ]]; then
+          echo ""
+          echo "🎉 ALL TESTS PASSED!"
+          echo "✅ Application is ready for deployment"
+          echo "✅ No critical issues found"
+          echo "✅ All systems verified"
+          exit 0
+        else
+          echo ""
+          echo "❌ DEPLOYMENT NOT READY"
+          echo "⚠️  One or more test suites failed"
+          echo "⚠️  Fix issues before deploying"
+          
+          if [[ "$BACKEND_STATUS" != "success" ]]; then
+            echo "   - Backend tests need attention"
+          fi
+          if [[ "$FRONTEND_STATUS" != "success" ]]; then
+            echo "   - Frontend tests need attention"
+          fi
+          if [[ "$INTEGRATION_STATUS" != "success" ]]; then
+            echo "   - Integration tests need attention"
+          fi
+          
+          exit 1
+        fi
+
+  notify-results:
+    runs-on: ubuntu-latest
+    name: Notify Test Results
+    needs: [deployment-readiness]
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: needs.deployment-readiness.result == 'success'
+      run: |
+        echo "🎉 Test suite completed successfully!"
+        echo "Application is verified and ready for deployment."
+        
+    - name: Notify on failure  
+      if: needs.deployment-readiness.result != 'success'
+      run: |
+        echo "⚠️  Test suite found issues that need attention."
+        echo "Please review the test reports and fix failing tests."
+        echo "Do not deploy until all tests pass."

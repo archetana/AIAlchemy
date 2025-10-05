@@ -203,13 +203,6 @@ const Dashboard = () => {
               )}
             </Box>
           </Box>
-          <Box display={'flex'} justifyContent={'flex-end'} mt={2}>
-            <Button variant='outlined' color='primary'>
-              <Link href="/applications/new" underline="none">
-                + New Application
-              </Link>
-            </Button>
-          </Box>
         </Box>
 
         {/* Dashboard Content */}

@@ -303,7 +303,7 @@ const Pipeline = () => {
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
-                onClick={() => console.log('Add application')}
+                onClick={() => navigate('/applications/new')}
                 size="small"
               >
                 Add Application
