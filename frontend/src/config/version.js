@@ -16,11 +16,11 @@ export const getVersion = () => {
   return `${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}.${VERSION_CONFIG.build}`;
 };
 
-// App metadata
+// App metadata - static definition to avoid circular references
 export const APP_INFO = {
   name: 'AIAlchemy',
   fullName: 'AIAlchemy - AI Analyst for Startup Evaluation',
-  version: getVersion(),
+  version: `${VERSION_CONFIG.major}.${VERSION_CONFIG.minor}.${VERSION_CONFIG.patch}.${VERSION_CONFIG.build}`, // Direct calculation
   description: 'AI-powered startup evaluation platform with automated due diligence, AI interviews, and investment memo generation',
   team: 'AIAlchemy Team',
   credits: [
@@ -42,12 +42,20 @@ export const APP_INFO = {
   ]
 };
 
-// Deployment tracking
+// Deployment tracking - safer environment variable access
+const getEnvVar = (name, defaultValue) => {
+  try {
+    return process.env[name] || defaultValue;
+  } catch (error) {
+    return defaultValue;
+  }
+};
+
 export const DEPLOYMENT_INFO = {
-  environment: process.env.NODE_ENV || 'development',
-  buildNumber: process.env.REACT_APP_BUILD_NUMBER || '59652338',
-  commitHash: process.env.REACT_APP_COMMIT_HASH || 'None',
-  buildDate: process.env.REACT_APP_BUILD_DATE || '2025-10-05T08:18:58.450935',
+  environment: getEnvVar('NODE_ENV', 'development'),
+  buildNumber: getEnvVar('REACT_APP_BUILD_NUMBER', '59652338'),
+  commitHash: getEnvVar('REACT_APP_COMMIT_HASH', 'local-dev'),
+  buildDate: getEnvVar('REACT_APP_BUILD_DATE', '2025-10-05T08:18:58.450935'),
   deploymentDate: new Date().toISOString()
 };
 
