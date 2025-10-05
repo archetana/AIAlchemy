@@ -35,8 +35,8 @@ import {
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import AboutDialog from '../About/AboutDialog';
-import { APP_INFO } from '../../config/version';
+// Use RobustAboutDialog that handles version dependencies gracefully
+import RobustAboutDialog from '../About/RobustAboutDialog';
 
 const TopNavigation = () => {
   const location = useLocation();
@@ -341,14 +341,14 @@ const TopNavigation = () => {
             <Box>
               <Typography variant="inherit">About</Typography>
               <Typography variant="caption" color="text.secondary" display="block">
-                v{APP_INFO.version}
+                v1.0.3
               </Typography>
             </Box>
           </MenuItem>
         </Menu>
 
         {/* About Dialog */}
-        <AboutDialog 
+        <RobustAboutDialog 
           open={aboutDialogOpen} 
           onClose={() => setAboutDialogOpen(false)} 
         />
