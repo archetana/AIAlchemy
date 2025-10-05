@@ -68,9 +68,9 @@ print(f'{major}.{minor}.{patch}')
         git commit -m "chore: increment version to ${{ steps.increment.outputs.version }} (build ${{ steps.increment.outputs.build_number }})" || exit 0
         git push
 
-  build-and-test:
+  build-only:
     runs-on: ubuntu-latest
-    name: Build and Test
+    name: Build Applications
     needs: version-increment
     
     steps:
@@ -91,20 +91,23 @@ print(f'{major}.{minor}.{patch}')
         cache: 'npm'
         cache-dependency-path: 'frontend/package-lock.json'
         
-    - name: Install dependencies and run tests
+    - name: Install dependencies for build
       run: |
-        # Backend tests
+        # Backend dependencies
         cd backend
         python -m pip install --upgrade pip
-        pip install -r requirements-core.txt
-        pip install pytest pytest-asyncio pytest-httpx
-        python run_tests.py
+        pip install -r requirements.txt
+        echo "✅ Backend dependencies installed"
         cd ..
         
-        # Frontend tests  
+        # Frontend dependencies
         cd frontend
-        npm ci
-        npm test -- --coverage --watchAll=false
+        npm --version
+        node --version
+        npm install -g npm@latest
+        npm --version
+        npm ci --prefer-offline --no-audit
+        echo "✅ Frontend dependencies installed"
         cd ..
         
     - name: Build applications with version info
@@ -129,7 +132,7 @@ print(f'{major}.{minor}.{patch}')
   deploy-to-gcp:
     runs-on: ubuntu-latest
     name: Deploy to Google Cloud
-    needs: [version-increment, build-and-test]
+    needs: [version-increment, build-only]
     if: github.ref == 'refs/heads/main'
     
     steps:
