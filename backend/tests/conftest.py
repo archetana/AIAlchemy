@@ -3,6 +3,7 @@ Pytest configuration and fixtures for AIAlchemy backend testing
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
@@ -14,7 +15,7 @@ from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
-from app.main import app
+from app.main import app as fastapi_app
 from app.core.database import database_manager
 from app.models import Base, User, StartupApplication, Industry, UserRole
 from app.auth.simple_password import simple_hash_password
@@ -26,7 +27,7 @@ def event_loop():
     yield loop
     loop.close()
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_app():
     """Create a test FastAPI application with isolated database."""
     
@@ -113,7 +114,7 @@ async def test_app():
         # Add test data
         await _create_test_data()
         
-        yield app
+        yield fastapi_app
         
     finally:
         # Cleanup
@@ -123,83 +124,108 @@ async def test_app():
 
 async def _create_test_data():
     """Create test data for testing."""
+    from sqlalchemy import select
     async with database_manager.get_session() as session:
-        # Create test industries
-        ai_industry = Industry(name="AI/ML", description="Artificial Intelligence")
-        fintech_industry = Industry(name="FinTech", description="Financial Technology")
+        # Check if test industries already exist
+        ai_result = await session.execute(select(Industry).where(Industry.name == "AI/ML"))
+        ai_industry = ai_result.scalar_one_or_none()
         
-        session.add(ai_industry)
-        session.add(fintech_industry)
-        await session.commit()
-        await session.refresh(ai_industry)
-        await session.refresh(fintech_industry)
+        if not ai_industry:
+            ai_industry = Industry(name="AI/ML", description="Artificial Intelligence")
+            session.add(ai_industry)
         
-        # Create test users
-        test_users = [
-            User(
-                email="test@example.com",
-                hashed_password=simple_hash_password("TempPass123!"),
-                full_name="Test User",
-                title="Developer",
-                role=UserRole.ADMIN,
-                is_active=True
-            ),
-            User(
-                email="analyst@example.com", 
-                hashed_password=simple_hash_password("AnalystPass123!"),
-                full_name="Test Analyst",
-                title="AI Analyst",
-                role=UserRole.ANALYST,
-                is_active=True
-            )
-        ]
+        fintech_result = await session.execute(select(Industry).where(Industry.name == "FinTech"))
+        fintech_industry = fintech_result.scalar_one_or_none()
         
-        for user in test_users:
-            session.add(user)
+        if not fintech_industry:
+            fintech_industry = Industry(name="FinTech", description="Financial Technology")
+            session.add(fintech_industry)
         
         await session.commit()
         
-        # Create test startup applications
-        test_startups = [
-            StartupApplication(
-                company_name="TestCorp AI",
-                contact_name="John Doe",
-                contact_email="john@testcorp.ai",
-                website="https://testcorp.ai",
-                industry_id=ai_industry.id,
-                funding_amount_requested=1000000.0,
-                current_arr=100000.0,
-                runway_months=18
-            ),
-            StartupApplication(
-                company_name="FinTech Solutions",
-                contact_name="Jane Smith", 
-                contact_email="jane@fintech.com",
-                website="https://fintech.com",
-                industry_id=fintech_industry.id,
-                funding_amount_requested=2000000.0,
-                current_arr=500000.0,
-                runway_months=24
-            )
-        ]
+        if ai_industry.id is None:
+            await session.refresh(ai_industry)
+        if fintech_industry.id is None:
+            await session.refresh(fintech_industry)
         
-        for startup in test_startups:
-            session.add(startup)
+        # Create test users (only if they don't exist)
+        test_user_emails = ["test@example.com", "analyst@example.com"]
+        
+        for email in test_user_emails:
+            user_result = await session.execute(select(User).where(User.email == email))
+            existing_user = user_result.scalar_one_or_none()
             
+            if not existing_user:
+                if email == "test@example.com":
+                    user = User(
+                        email=email,
+                        hashed_password=simple_hash_password("TempPass123!"),
+                        full_name="Test User",
+                        title="Developer", 
+                        role=UserRole.ADMIN,
+                        is_active=True
+                    )
+                else:  # analyst@example.com
+                    user = User(
+                        email=email,
+                        hashed_password=simple_hash_password("AnalystPass123!"),
+                        full_name="Test Analyst",
+                        title="AI Analyst",
+                        role=UserRole.ANALYST,
+                        is_active=True
+                    )
+                session.add(user)
+        
+        await session.commit()
+        
+        # Create test startup applications (only if they don't exist)
+        test_company_names = ["TestCorp AI", "FinTech Solutions"]
+        
+        for company_name in test_company_names:
+            startup_result = await session.execute(select(StartupApplication).where(StartupApplication.company_name == company_name))
+            existing_startup = startup_result.scalar_one_or_none()
+            
+            if not existing_startup:
+                if company_name == "TestCorp AI":
+                    startup = StartupApplication(
+                        company_name=company_name,
+                        contact_name="John Doe",
+                        contact_email="john@testcorp.ai",
+                        website="https://testcorp.ai",
+                        industry_id=ai_industry.id,
+                        funding_amount_requested=1000000.0,
+                        current_arr=100000.0,
+                        runway_months=18
+                    )
+                else:  # FinTech Solutions
+                    startup = StartupApplication(
+                        company_name=company_name,
+                        contact_name="Jane Smith",
+                        contact_email="jane@fintech.com",
+                        website="https://fintech.com",
+                        industry_id=fintech_industry.id,
+                        funding_amount_requested=2000000.0,
+                        current_arr=500000.0,
+                        runway_months=24
+                    )
+                session.add(startup)
+        
         await session.commit()
 
-@pytest.fixture
+@pytest_asyncio.fixture(scope="function")
 async def client(test_app):
     """Create async HTTP client for testing."""
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+    from httpx import ASGITransport
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
-@pytest.fixture
+@pytest.fixture(scope="function")  
 def sync_client(test_app):
     """Create synchronous test client for simple tests."""
     return TestClient(test_app)
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def authenticated_client(client):
     """Create authenticated HTTP client with valid JWT token."""
     
@@ -218,10 +244,13 @@ async def authenticated_client(client):
     # Create new client with authorization header
     headers = {"Authorization": f"Bearer {access_token}"}
     
-    async with AsyncClient(app=client.app, base_url="http://test", headers=headers) as auth_client:
+    from httpx import ASGITransport
+    # Get the app from the client's transport
+    transport = ASGITransport(app=client._transport.app)
+    async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as auth_client:
         yield auth_client
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def analyst_client(client):
     """Create authenticated HTTP client with analyst role."""
     
@@ -238,5 +267,8 @@ async def analyst_client(client):
     
     headers = {"Authorization": f"Bearer {access_token}"}
     
-    async with AsyncClient(app=client.app, base_url="http://test", headers=headers) as auth_client:
+    from httpx import ASGITransport
+    # Get the app from the client's transport
+    transport = ASGITransport(app=client._transport.app)
+    async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as auth_client:
         yield auth_client

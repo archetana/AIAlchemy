@@ -81,7 +81,9 @@ jobs:
     - name: Install frontend dependencies
       run: |
         cd frontend
-        npm ci
+        npm --version
+        # Use npm install if npm ci fails with lockfile version issues
+        npm ci || npm install
         npx playwright install --with-deps
         
     - name: Run frontend tests
@@ -136,7 +138,8 @@ jobs:
         
         # Frontend dependencies
         cd frontend
-        npm ci
+        npm --version
+        npm ci || npm install
         npx playwright install --with-deps chromium
         cd ..
         
