@@ -26,21 +26,21 @@ python-dateutil==2.8.2
 aiofiles==24.1.0
 google-cloud-storage==2.10.0
 
-# AI/ML Services
+# AI/ML Services (optional, will gracefully degrade if not available)
 google-cloud-documentai==2.22.0
-google-generativeai==0.3.2
+google-generativeai==0.7.2
 google-auth==2.23.4
 
 # Document processing
 PyPDF2==3.0.1
 python-pptx==0.6.23
-python-docx==0.8.11
+python-docx==1.1.0
 Pillow==10.1.0
 
-# Virus scanning & security
-pyclamd==0.5.0
+# Virus scanning & security (optional)
+pyclamd==0.4.0
 
-# Task queue for async processing
+# Task queue for async processing (optional)
 celery==5.3.4
 redis==5.0.1
 
@@ -51,7 +51,6 @@ structlog==23.2.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt>=3.2.0,<5.0.0
-python-multipart==0.0.6
 
 # Testing
 pytest==7.4.3

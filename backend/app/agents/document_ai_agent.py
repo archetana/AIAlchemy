@@ -21,6 +21,7 @@ try:
 except ImportError:
     GOOGLE_AI_AVAILABLE = False
     documentai = None
+    logging.getLogger(__name__).warning("Google Document AI not available - using fallback text extraction")
 
 import aiofiles
 from pydantic import BaseModel, Field

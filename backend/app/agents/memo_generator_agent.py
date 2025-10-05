@@ -19,6 +19,7 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
     genai = None
+    logging.getLogger(__name__).warning("Gemini Pro not available - using template-based memo generation")
 
 from pydantic import BaseModel, Field
 

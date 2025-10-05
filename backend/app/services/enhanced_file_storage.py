@@ -26,6 +26,7 @@ try:
 except ImportError:
     CLAMD_AVAILABLE = False
     pyclamd = None
+    logging.getLogger(__name__).info("pyclamd not available - virus scanning disabled")
 
 try:
     from google.cloud import storage
@@ -34,6 +35,7 @@ try:
 except ImportError:
     GCS_AVAILABLE = False
     storage = None
+    logging.getLogger(__name__).info("Google Cloud Storage not available - using local storage only")
 
 
 class FileValidationResult(BaseModel):

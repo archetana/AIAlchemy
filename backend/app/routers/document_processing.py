@@ -21,13 +21,29 @@ from app.models import (
     DocumentExtraction, GeneratedMemo, FileValidationLog,
     DocumentProcessingStatus, PipelineStage
 )
-from app.agents import DocumentAIAgent, MemoGeneratorAgent, PipelineOrchestrator
-from app.agents.document_ai_agent import DocumentAIConfig
-from app.agents.memo_generator_agent import MemoGeneratorConfig, MemoSection
-from app.agents.pipeline_orchestrator import PipelineConfig
-from app.services.enhanced_file_storage import (
-    EnhancedFileStorageService, FileStorageConfig
-)
+try:
+    from app.agents import DocumentAIAgent, MemoGeneratorAgent, PipelineOrchestrator
+    from app.agents.document_ai_agent import DocumentAIConfig
+    from app.agents.memo_generator_agent import MemoGeneratorConfig, MemoSection
+    from app.agents.pipeline_orchestrator import PipelineConfig
+    AGENTS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"AI agents not available: {e}")
+    AGENTS_AVAILABLE = False
+    DocumentAIAgent = None
+    MemoGeneratorAgent = None
+    PipelineOrchestrator = None
+
+try:
+    from app.services.enhanced_file_storage import (
+        EnhancedFileStorageService, FileStorageConfig
+    )
+    ENHANCED_STORAGE_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Enhanced file storage not available: {e}")
+    ENHANCED_STORAGE_AVAILABLE = False
+    EnhancedFileStorageService = None
+    FileStorageConfig = None
 
 router = APIRouter(prefix="/api/v1/document-processing", tags=["document-processing"])
 logger = logging.getLogger(__name__)
@@ -95,10 +111,19 @@ class MemoResponse(BaseModel):
 
 
 # Initialize services (in production, these would be dependency injected)
-file_storage_service = EnhancedFileStorageService(FileStorageConfig())
+if ENHANCED_STORAGE_AVAILABLE:
+    file_storage_service = EnhancedFileStorageService(FileStorageConfig())
+else:
+    file_storage_service = None
 
-def get_pipeline_orchestrator() -> PipelineOrchestrator:
+def get_pipeline_orchestrator():
     """Get configured pipeline orchestrator"""
+    
+    if not AGENTS_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="AI processing agents not available. Please check system configuration."
+        )
     
     # Create agent configurations
     doc_ai_config = DocumentAIConfig(
@@ -148,6 +173,13 @@ async def upload_document(
     """
     
     try:
+        # Check if enhanced file storage is available
+        if not ENHANCED_STORAGE_AVAILABLE or not file_storage_service:
+            raise HTTPException(
+                status_code=503,
+                detail="Enhanced file storage service not available. Please check system configuration."
+            )
+        
         # Validate startup application exists
         startup = db.query(StartupApplication).filter(
             StartupApplication.id == startup_application_id
