@@ -10,64 +10,14 @@ env:
   REGION: us-central1
 
 jobs:
-  version-increment:
-    runs-on: ubuntu-latest
-    name: Increment Version
-    outputs:
-      version: ${{ steps.increment.outputs.version }}
-      build_number: ${{ steps.increment.outputs.build_number }}
-      
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Set up Node.js 18
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        
-    - name: Increment version
-      id: increment
-      run: |
-        cd frontend
-        
-        # Set build metadata
-        export BUILD_NUMBER=${{ github.run_number }}
-        export COMMIT_SHA=${{ github.sha }}
-        
-        # Run version increment
-        python3 scripts/increment-version.py patch
-        
-        # Get the new version using awk (more reliable)
-        VERSION=$(awk '/major:/{print $2} /minor:/{print $2} /patch:/{print $2}' ./src/config/version.js | tr -d ',' | head -3 | paste -sd "." -)
-        
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
-        
-        echo "🎯 New version: $VERSION"
-        echo "🏗️ Build number: ${{ github.run_number }}"
-        
-    - name: Commit version update
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add frontend/src/config/version.js frontend/package.json
-        git commit -m "chore: increment version to ${{ steps.increment.outputs.version }} (build ${{ steps.increment.outputs.build_number }})" || exit 0
-        git push
-
   deploy-to-gcp:
     runs-on: ubuntu-latest
     name: Deploy to Google Cloud
-    needs: [version-increment]
     if: github.ref == 'refs/heads/main'
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        ref: main
         
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v1
@@ -82,11 +32,11 @@ jobs:
       
     - name: Build and push Docker images
       env:
-        REACT_APP_BUILD_NUMBER: ${{ needs.version-increment.outputs.build_number }}
+        REACT_APP_BUILD_NUMBER: ${{ github.run_number }}
         REACT_APP_COMMIT_HASH: ${{ github.sha }}
         REACT_APP_BUILD_DATE: ${{ github.event.head_commit.timestamp }}
       run: |
-        VERSION=${{ needs.version-increment.outputs.version }}
+        VERSION="1.0.${{ github.run_number }}"
         
         # Build and push backend
         cd backend
@@ -109,7 +59,7 @@ jobs:
         
     - name: Deploy to Cloud Run
       run: |
-        VERSION=${{ needs.version-increment.outputs.version }}
+        VERSION="1.0.${{ github.run_number }}"
         
         # Deploy backend
         gcloud run deploy aialchemy-backend \
@@ -134,56 +84,20 @@ jobs:
   post-deploy:
     runs-on: ubuntu-latest
     name: Post-Deployment Tasks
-    needs: [version-increment, deploy-to-gcp]
+    needs: [deploy-to-gcp]
     
-    steps:
-    - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ needs.version-increment.outputs.version }}
-        release_name: AIAlchemy v${{ needs.version-increment.outputs.version }}
-        body: |
-          ## 🚀 AIAlchemy v${{ needs.version-increment.outputs.version }}
-          
-          **Build Number:** ${{ needs.version-increment.outputs.build_number }}
-          **Commit:** ${{ github.sha }}
-          **Deployed:** ${{ github.event.head_commit.timestamp }}
-          
-          ### 🎯 Features in this release:
-          - Phase 1 Data Ingestion with Document AI
-          - Gemini Pro integration for memo generation  
-          - Enhanced file upload with security scanning
-          - Real-time pipeline processing
-          - Comprehensive error handling and monitoring
-          
-          ### 🔧 Technical improvements:
-          - Multi-agent AI system architecture
-          - Async processing with queue management
-          - Database models for processing workflows
-          - Production-ready deployment configuration
-          
-          **Deployment URLs:**
-          - Backend API: Available via Cloud Run
-          - Frontend App: Available via Cloud Run
-          
-          See the [deployment documentation](https://github.com/archetana/AIAlchemy/blob/main/README.md) for more details.
-        draft: false
-        prerelease: false
-        
+    steps:        
     - name: Deployment Summary
       run: |
         echo "🎉 Deployment Complete!"
         echo "========================"
-        echo "Version: v${{ needs.version-increment.outputs.version }}"
-        echo "Build: #${{ needs.version-increment.outputs.build_number }}"
+        echo "Version: v1.0.${{ github.run_number }}"
+        echo "Build: #${{ github.run_number }}"
         echo "Commit: ${{ github.sha }}"
         echo "Timestamp: $(date -u)"
         echo ""
         echo "✅ Backend deployed to Cloud Run"
         echo "✅ Frontend deployed to Cloud Run" 
-        echo "✅ GitHub release created"
-        echo "✅ Version incremented automatically"
+        echo "✅ Deployment successful"
         echo ""
         echo "🔗 Monitor deployment at: https://console.cloud.google.com/run"
