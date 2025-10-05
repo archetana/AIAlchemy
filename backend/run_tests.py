@@ -135,6 +135,8 @@ class TestRunner:
         passed_tests = sum(1 for passed in self.test_results.values() if passed)
         failed_tests = total_tests - passed_tests
         
+        success_rate = (passed_tests/total_tests*100) if total_tests > 0 else 100.0
+        
         report = f"""
 {'='*60}
 📊 TEST EXECUTION REPORT
@@ -144,7 +146,7 @@ class TestRunner:
    Total Tests: {total_tests}
    ✅ Passed: {passed_tests}
    ❌ Failed: {failed_tests}
-   📊 Success Rate: {(passed_tests/total_tests*100):.1f if total_tests > 0 else 100.0}%
+   📊 Success Rate: {success_rate:.1f}%
 
 {'='*60}
 📋 Detailed Results:
