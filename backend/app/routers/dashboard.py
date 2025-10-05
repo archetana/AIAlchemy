@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
-from app.database import get_db
+from app.core.database import get_db
 from app.crud import dashboard_crud
 from app.schemas import DashboardStats
 

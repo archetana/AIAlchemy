@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 
-from app.database import get_db
+from app.core.database import get_db
 from app.crud import startup_crud
 from app.schemas import (
     StartupApplication, StartupApplicationCreate, StartupApplicationUpdate,
@@ -89,7 +89,7 @@ async def get_startup_by_id(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch startup: {str(e)}")
 
-@router.post("/", response_model=StartupApplication)
+@router.post("/")
 async def create_startup(
     startup_data: StartupApplicationCreate,
     db: AsyncSession = Depends(get_db)
@@ -99,7 +99,7 @@ async def create_startup(
     """
     try:
         startup = await startup_crud.create_startup(db, startup_data)
-        return startup
+        return {"success": True, "data": startup, "message": "Startup application created successfully"}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create startup: {str(e)}")

@@ -65,17 +65,27 @@ async def get_all_users(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
 
-@router.get("/industries", response_model=List[Industry])
+@router.get("/industries")
 async def get_all_industries(
-    current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """
-    Get all industries for configuration
+    Get all industries for configuration (public endpoint)
     """
     try:
         industries = await industry_crud.get_all_industries(db)
-        return industries
+        # Convert to simple dict format
+        return {
+            "success": True,
+            "data": [
+                {
+                    "id": industry.id,
+                    "name": industry.name,
+                    "description": industry.description
+                }
+                for industry in industries
+            ]
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch industries: {str(e)}")

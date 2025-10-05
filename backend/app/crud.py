@@ -170,13 +170,27 @@ class StartupCRUD:
         self,
         session: AsyncSession,
         startup_data: StartupApplicationCreate
-    ) -> StartupApplication:
+    ) -> Dict[str, Any]:
         """Create new startup application"""
         startup = StartupApplication(**startup_data.dict())
         session.add(startup)
         await session.commit()
         await session.refresh(startup)
-        return startup
+        
+        # Return simplified dict to avoid async serialization issues
+        return {
+            "id": startup.id,
+            "company_name": startup.company_name,
+            "contact_email": startup.contact_email,
+            "contact_name": startup.contact_name,
+            "website": startup.website,
+            "industry_id": startup.industry_id,
+            "funding_stage": startup.funding_stage.value if startup.funding_stage else None,
+            "funding_amount_requested": startup.funding_amount_requested,
+            "status": startup.status.value if startup.status else None,
+            "created_at": startup.created_at.isoformat() if startup.created_at else None,
+            "updated_at": startup.updated_at.isoformat() if startup.updated_at else None
+        }
     
     async def update_startup(
         self,

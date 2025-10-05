@@ -174,3 +174,6 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     async with database_manager.get_session() as session:
         yield session
+
+# Alias for compatibility with existing code
+get_db = get_db_session

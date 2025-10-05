@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, Optional
 
-from app.database import get_db
+from app.core.database import get_db
 from app.crud import pipeline_crud, startup_crud
 from app.schemas import StartupFilters, PaginationParams
 from app.models import ApplicationStatus

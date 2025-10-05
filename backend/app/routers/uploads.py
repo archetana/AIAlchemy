@@ -10,13 +10,44 @@ from typing import List, Optional
 import io
 from datetime import datetime
 
-from app.database import get_db
+from app.core.database import get_db
 from app.services.file_storage import file_storage_service
 from app.crud import startup_crud
 from app.models import UploadedFile, StartupApplication
 from sqlalchemy import select
 
 router = APIRouter(prefix="/api/uploads", tags=["uploads"])
+
+@router.post("/files")
+async def upload_file_temporary(
+    file: UploadFile = File(...),
+    file_type: str = Form("document", description="Type of file: pitch_deck, financial_docs, team_info, etc."),
+    description: Optional[str] = Form(None, description="Optional description of the file"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Upload a single file without associating it with a startup yet
+    This is used during application creation before the startup record exists
+    """
+    try:
+        # Upload file using storage service with temporary startup_id of 0
+        file_metadata = await file_storage_service.upload_file(
+            file=file,
+            startup_id=0,  # Temporary, will be updated later when startup is created
+            file_type=file_type,
+            description=description
+        )
+        
+        return {
+            'success': True,
+            'file_metadata': file_metadata,
+            'message': 'File uploaded successfully'
+        }
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @router.post("/startup/{startup_id}/files")
 async def upload_startup_files(

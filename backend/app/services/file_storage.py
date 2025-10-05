@@ -30,6 +30,8 @@ class FileStorageService:
         'application/msword': ['.doc'],
         'application/vnd.ms-powerpoint': ['.ppt'],
         'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+        'text/plain': ['.txt'],
+        'text/csv': ['.csv'],
         
         # Images
         'image/jpeg': ['.jpg', '.jpeg'],
