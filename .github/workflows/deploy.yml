@@ -1,143 +1,258 @@
-name: Deploy to Production with GCS
+name: Deploy to Production
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:  # Allow manual deployment
 
 env:
-  PROJECT_ID: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: us-central1
-  BACKEND_SERVICE: aialchemy-backend
-  FRONTEND_SERVICE: aialchemy-frontend
-  GATEWAY_SERVICE: aialchemy-gateway
-  REPO_NAME: aialchemy-repo
 
 jobs:
-  deploy:
+  version-increment:
     runs-on: ubuntu-latest
+    name: Increment Version
+    outputs:
+      version: ${{ steps.increment.outputs.version }}
+      build_number: ${{ steps.increment.outputs.build_number }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Set up Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Increment version
+      id: increment
+      run: |
+        cd frontend
+        
+        # Set build metadata
+        export BUILD_NUMBER=${{ github.run_number }}
+        export COMMIT_SHA=${{ github.sha }}
+        
+        # Run version increment
+        python3 scripts/increment-version.py patch
+        
+        # Get the new version
+        VERSION=$(python3 -c "
+import re
+with open('./src/config/version.js', 'r') as f:
+    content = f.read()
+major_match = re.search(r'major:\s*(\d+)', content)
+minor_match = re.search(r'minor:\s*(\d+)', content)
+patch_match = re.search(r'patch:\s*(\d+)', content)
+major = int(major_match.group(1)) if major_match else 1
+minor = int(minor_match.group(1)) if minor_match else 0
+patch = int(patch_match.group(1)) if patch_match else 0
+print(f'{major}.{minor}.{patch}')
+        ")
+        
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
+        
+        echo "🎯 New version: $VERSION"
+        echo "🏗️ Build number: ${{ github.run_number }}"
+        
+    - name: Commit version update
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add frontend/src/config/version.js frontend/package.json
+        git commit -m "chore: increment version to ${{ steps.increment.outputs.version }} (build ${{ steps.increment.outputs.build_number }})" || exit 0
+        git push
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    name: Build and Test
+    needs: version-increment
+    
+    steps:
+    - name: Checkout code (with version updates)
+      uses: actions/checkout@v4
+      with:
+        ref: main  # Get the updated version
+        
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Set up Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
+        
+    - name: Install dependencies and run tests
+      run: |
+        # Backend tests
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements-core.txt
+        pip install pytest pytest-asyncio pytest-httpx
+        python run_tests.py
+        cd ..
+        
+        # Frontend tests  
+        cd frontend
+        npm ci
+        npm test -- --coverage --watchAll=false
+        cd ..
+        
+    - name: Build applications with version info
+      env:
+        REACT_APP_BUILD_NUMBER: ${{ needs.version-increment.outputs.build_number }}
+        REACT_APP_COMMIT_HASH: ${{ github.sha }}
+        REACT_APP_BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+      run: |
+        echo "🏗️ Building applications with version ${{ needs.version-increment.outputs.version }}"
+        
+        # Build backend
+        cd backend
+        docker build -t aialchemy-backend:${{ needs.version-increment.outputs.version }} .
+        cd ..
+        
+        # Build frontend  
+        cd frontend
+        npm run build
+        docker build -t aialchemy-frontend:${{ needs.version-increment.outputs.version }} .
+        cd ..
+
+  deploy-to-gcp:
+    runs-on: ubuntu-latest
+    name: Deploy to Google Cloud
+    needs: [version-increment, build-and-test]
+    if: github.ref == 'refs/heads/main'
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Setup Google Cloud CLI
-      uses: google-github-actions/setup-gcloud@v1
       with:
-        project_id: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
-
+        ref: main
+        
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v1
       with:
-        credentials_json: ${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}
-
-    - name: Configure Docker for Artifact Registry
-      run: |
-        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
-
-    - name: Enable required APIs
-      run: |
-        gcloud services enable run.googleapis.com \
-          cloudbuild.googleapis.com \
-          artifactregistry.googleapis.com \
-          storage.googleapis.com
-
-    - name: Create Artifact Registry repository
-      run: |
-        if ! gcloud artifacts repositories describe ${{ env.REPO_NAME }} --location=${{ env.REGION }} >/dev/null 2>&1; then
-          gcloud artifacts repositories create ${{ env.REPO_NAME }} \
-            --repository-format=docker \
-            --location=${{ env.REGION }} \
-            --description="AIAlchemy Docker images"
-        fi
-
-    - name: Build and push backend
-      run: |
-        cd backend
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:latest .
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:latest
-
-    - name: Deploy backend to Cloud Run
-      run: |
-        # Create base64 encoded key for runtime
-        echo '${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}' | base64 -w 0 > gcs_key_base64.txt
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
         
-        gcloud run deploy ${{ env.BACKEND_SERVICE }} \
-          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:latest \
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      
+    - name: Configure Docker for GCP
+      run: gcloud auth configure-docker
+      
+    - name: Build and push Docker images
+      env:
+        REACT_APP_BUILD_NUMBER: ${{ needs.version-increment.outputs.build_number }}
+        REACT_APP_COMMIT_HASH: ${{ github.sha }}
+        REACT_APP_BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+      run: |
+        VERSION=${{ needs.version-increment.outputs.version }}
+        
+        # Build and push backend
+        cd backend
+        docker build -t gcr.io/$PROJECT_ID/aialchemy-backend:$VERSION \
+          -t gcr.io/$PROJECT_ID/aialchemy-backend:latest .
+        docker push gcr.io/$PROJECT_ID/aialchemy-backend:$VERSION
+        docker push gcr.io/$PROJECT_ID/aialchemy-backend:latest
+        cd ..
+        
+        # Build and push frontend
+        cd frontend  
+        docker build -t gcr.io/$PROJECT_ID/aialchemy-frontend:$VERSION \
+          -t gcr.io/$PROJECT_ID/aialchemy-frontend:latest \
+          --build-arg REACT_APP_BUILD_NUMBER=$REACT_APP_BUILD_NUMBER \
+          --build-arg REACT_APP_COMMIT_HASH=$REACT_APP_COMMIT_HASH \
+          --build-arg REACT_APP_BUILD_DATE="$REACT_APP_BUILD_DATE" .
+        docker push gcr.io/$PROJECT_ID/aialchemy-frontend:$VERSION  
+        docker push gcr.io/$PROJECT_ID/aialchemy-frontend:latest
+        cd ..
+        
+    - name: Deploy to Cloud Run
+      run: |
+        VERSION=${{ needs.version-increment.outputs.version }}
+        
+        # Deploy backend
+        gcloud run deploy aialchemy-backend \
+          --image gcr.io/$PROJECT_ID/aialchemy-backend:$VERSION \
           --platform managed \
-          --region ${{ env.REGION }} \
+          --region $REGION \
           --allow-unauthenticated \
           --memory 2Gi \
-          --cpu 1 \
-          --timeout 900 \
-          --min-instances 0 \
-          --max-instances 10 \
-          --port 8080 \
-          --set-env-vars="DATABASE_URL=sqlite+aiosqlite://./aialchemy.db,USE_GOOGLE_CLOUD_STORAGE=true,GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GCS_BUCKET_NAME }},GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},SECRET_KEY=${{ secrets.SECRET_KEY }},JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }},ENVIRONMENT=production,DEBUG=false,BUCKET_APP_STORAGE=${{ secrets.GCS_BUCKET_NAME }},VERTEX_AI_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},VERTEX_AI_LOCATION=us-central1,GCS_SERVICE_ACCOUNT_KEY_BASE64=$(cat gcs_key_base64.txt)"
-        
-        rm gcs_key_base64.txt
-
-    - name: Build and push frontend
-      run: |
-        cd frontend
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:latest .
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:latest
-
-    - name: Deploy frontend to Cloud Run
-      run: |
-        gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
-          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:latest \
+          --cpu 2 \
+          --max-instances 10
+          
+        # Deploy frontend
+        gcloud run deploy aialchemy-frontend \
+          --image gcr.io/$PROJECT_ID/aialchemy-frontend:$VERSION \
           --platform managed \
-          --region ${{ env.REGION }} \
+          --region $REGION \
           --allow-unauthenticated \
           --memory 1Gi \
           --cpu 1 \
-          --timeout 300 \
-          --min-instances 0 \
-          --max-instances 5 \
-          --port 8080 \
-          --set-env-vars="REACT_APP_API_URL=/api"
+          --max-instances 5
 
-    - name: Build and push gateway
-      run: |
-        cd nginx-gateway
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/nginx-gateway:latest .
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/nginx-gateway:latest
-
-    - name: Get service URLs
-      id: get-urls
-      run: |
-        BACKEND_URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --platform managed --region ${{ env.REGION }} --format 'value(status.url)')
-        FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} --platform managed --region ${{ env.REGION }} --format 'value(status.url)')
+  post-deploy:
+    runs-on: ubuntu-latest
+    name: Post-Deployment Tasks
+    needs: [version-increment, deploy-to-gcp]
+    
+    steps:
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ needs.version-increment.outputs.version }}
+        release_name: AIAlchemy v${{ needs.version-increment.outputs.version }}
+        body: |
+          ## 🚀 AIAlchemy v${{ needs.version-increment.outputs.version }}
+          
+          **Build Number:** ${{ needs.version-increment.outputs.build_number }}
+          **Commit:** ${{ github.sha }}
+          **Deployed:** ${{ github.event.head_commit.timestamp }}
+          
+          ### 🎯 Features in this release:
+          - Phase 1 Data Ingestion with Document AI
+          - Gemini Pro integration for memo generation  
+          - Enhanced file upload with security scanning
+          - Real-time pipeline processing
+          - Comprehensive error handling and monitoring
+          
+          ### 🔧 Technical improvements:
+          - Multi-agent AI system architecture
+          - Async processing with queue management
+          - Database models for processing workflows
+          - Production-ready deployment configuration
+          
+          **Deployment URLs:**
+          - Backend API: Available via Cloud Run
+          - Frontend App: Available via Cloud Run
+          
+          See the [deployment documentation](https://github.com/archetana/AIAlchemy/blob/main/README.md) for more details.
+        draft: false
+        prerelease: false
         
-        echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_OUTPUT
-        echo "FRONTEND_URL=$FRONTEND_URL" >> $GITHUB_OUTPUT
-
-    - name: Deploy gateway to Cloud Run
+    - name: Deployment Summary
       run: |
-        BACKEND_HOST=$(echo "${{ steps.get-urls.outputs.BACKEND_URL }}" | sed 's|https://||')
-        FRONTEND_HOST=$(echo "${{ steps.get-urls.outputs.FRONTEND_URL }}" | sed 's|https://||')
-        
-        gcloud run deploy ${{ env.GATEWAY_SERVICE }} \
-          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/nginx-gateway:latest \
-          --platform managed \
-          --region ${{ env.REGION }} \
-          --allow-unauthenticated \
-          --memory 512Mi \
-          --cpu 1 \
-          --min-instances 0 \
-          --max-instances 3 \
-          --port 8080 \
-          --set-env-vars="BACKEND_HOST=$BACKEND_HOST,FRONTEND_HOST=$FRONTEND_HOST"
-
-    - name: Display deployment summary
-      run: |
-        GATEWAY_URL=$(gcloud run services describe ${{ env.GATEWAY_SERVICE }} --platform managed --region ${{ env.REGION }} --format 'value(status.url)')
-        
         echo "🎉 Deployment Complete!"
-        echo "🌐 Application URL: $GATEWAY_URL"
-        echo "🔧 Backend API: ${{ steps.get-urls.outputs.BACKEND_URL }}"
-        echo "🎨 Frontend: ${{ steps.get-urls.outputs.FRONTEND_URL }}"
-        echo "🗂️ File Storage: gs://${{ secrets.GCS_BUCKET_NAME }}"
+        echo "========================"
+        echo "Version: v${{ needs.version-increment.outputs.version }}"
+        echo "Build: #${{ needs.version-increment.outputs.build_number }}"
+        echo "Commit: ${{ github.sha }}"
+        echo "Timestamp: $(date -u)"
+        echo ""
+        echo "✅ Backend deployed to Cloud Run"
+        echo "✅ Frontend deployed to Cloud Run" 
+        echo "✅ GitHub release created"
+        echo "✅ Version incremented automatically"
+        echo ""
+        echo "🔗 Monitor deployment at: https://console.cloud.google.com/run"

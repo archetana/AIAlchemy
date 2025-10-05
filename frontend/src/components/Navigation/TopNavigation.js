@@ -19,6 +19,7 @@ import {
   Badge,
   Tooltip,
   Chip,
+  Divider,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -30,15 +31,19 @@ import {
   AccountCircle as AccountCircleIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import AboutDialog from '../About/AboutDialog';
+import { APP_INFO } from '../../config/version';
 
 const TopNavigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState(null);
+  const [aboutDialogOpen, setAboutDialogOpen] = React.useState(false);
   const menuOpen = Boolean(anchorEl);
 
   // Handle logout
@@ -119,6 +124,11 @@ const TopNavigation = () => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleAboutClick = () => {
+    handleMenuClose();
+    setAboutDialogOpen(true);
   };
 
   return (
@@ -320,7 +330,28 @@ const TopNavigation = () => {
             </ListItemIcon>
             Sign Out
           </MenuItem>
+
+          {/* Separate group for About */}
+          <Divider sx={{ my: 1 }} />
+          
+          <MenuItem onClick={handleAboutClick}>
+            <ListItemIcon>
+              <InfoIcon fontSize="small" />
+            </ListItemIcon>
+            <Box>
+              <Typography variant="inherit">About</Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                v{APP_INFO.version}
+              </Typography>
+            </Box>
+          </MenuItem>
         </Menu>
+
+        {/* About Dialog */}
+        <AboutDialog 
+          open={aboutDialogOpen} 
+          onClose={() => setAboutDialogOpen(false)} 
+        />
       </Toolbar>
     </AppBar>
   );
