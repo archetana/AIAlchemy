@@ -2,7 +2,7 @@
 Pydantic schemas for API request/response models
 """
 
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.models import ApplicationStatus, FundingStage, FileStatus, UserRole
@@ -184,6 +184,14 @@ class StartupApplicationBase(BaseModel):
     current_arr: Optional[float] = None
     gross_margin: Optional[float] = None
     runway_months: Optional[int] = None
+
+    # Add this validator to your schema
+    @validator('funding_stage', pre=True)
+    def format_funding_stage(cls, v):
+        if isinstance(v, str):
+            # Converts "Pre-Seed" to "pre_seed"
+            return v.lower().replace(' ', '_')
+        return v
 
 class StartupApplicationCreate(StartupApplicationBase):
     industry_id: Optional[int] = None
