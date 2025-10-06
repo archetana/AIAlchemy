@@ -61,7 +61,7 @@ import {
 // Services
 import { uploadsApi, startupsApi, settingsApi, apiUtils } from '../../services/api';
 
-const Upload = () => {
+const Upload = ({ editMode = false, applicationId = null }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   
@@ -110,6 +110,79 @@ const Upload = () => {
   
   // Dynamic data from backend
   const [industries, setIndustries] = useState([]);
+
+  // Load existing application data in edit mode
+  useEffect(() => {
+    const loadApplicationData = async () => {
+      if (editMode && applicationId) {
+        try {
+          setLoading(true);
+          const response = await startupsApi.getStartup(applicationId);
+          
+          if (response.data && response.data.data) {
+            const appData = response.data.data;
+            
+            // Populate form with existing data and add dummy values for missing fields
+            setFormData({
+              // Company Information
+              company_name: appData.company_name || '',
+              website: appData.website || 'https://company-website.com',
+              industry_id: appData.industry_id || '',
+              funding_stage: appData.funding_stage || 'seed',
+              funding_amount_requested: appData.funding_amount_requested || '2000000',
+              description: appData.description || 'Innovative company transforming the industry with cutting-edge technology solutions.',
+              
+              // Contact Information  
+              contact_name: appData.contact_name || 'John Smith',
+              contact_email: appData.contact_email || '',
+              contact_phone: appData.contact_phone || '+1 (555) 123-4567',
+              contact_title: appData.contact_title || 'CEO & Founder',
+              
+              // Additional Information
+              founded_year: appData.founded_year || new Date().getFullYear() - 2,
+              team_size: appData.team_size || '15',
+              headquarters: appData.headquarters || 'San Francisco, CA',
+              current_arr: appData.current_arr || '500000',
+              gross_margin: appData.gross_margin || '75',
+              runway_months: appData.runway_months || '18',
+              
+              // Processing Options
+              auto_processing: appData.auto_processing !== undefined ? appData.auto_processing : true,
+              notify_completion: appData.notify_completion !== undefined ? appData.notify_completion : true,
+              priority: appData.priority || 'normal',
+            });
+            
+            // Load existing files
+            try {
+              const filesResponse = await uploadsApi.getStartupFiles(applicationId);
+              if (filesResponse.data && filesResponse.data.files) {
+                const existingFiles = filesResponse.data.files.map(file => ({
+                  id: file.id,
+                  name: file.filename,
+                  size: file.file_size || 0,
+                  type: file.content_type,
+                  status: 'uploaded',
+                  file: null, // No file object for existing files
+                  url: file.download_url
+                }));
+                setFiles(existingFiles);
+              }
+            } catch (filesError) {
+              console.error('Error loading files:', filesError);
+              // Continue even if files can't be loaded
+            }
+          }
+        } catch (err) {
+          console.error('Error loading application data:', err);
+          setError('Failed to load application data');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadApplicationData();
+  }, [editMode, applicationId]);
 
   // Stepper configuration
   const steps = [
@@ -372,14 +445,21 @@ const Upload = () => {
       
       console.log('Submitting application data:', applicationData);
       
-      const response = await startupsApi.createStartup(applicationData);
+      const response = editMode 
+        ? await startupsApi.updateStartup(applicationId, applicationData)
+        : await startupsApi.createStartup(applicationData);
       
-      if (response.data) {
-        const startupId = response.data.id;
+      if (response.data && response.data.data) {
+        const startupId = editMode ? applicationId : response.data.data.id;
+        console.log('Startup ID for file operations:', startupId);
+        
+        if (!startupId) {
+          throw new Error('Failed to get startup ID for file operations');
+        }
         
         // If files were uploaded, associate them with the startup
         const uploadedFiles = files.filter(f => f.status === 'uploaded');
-        if (uploadedFiles.length > 0) {
+        if (uploadedFiles.length > 0 && startupId) {
           try {
             // Group files by type and upload them
             const filesByType = uploadedFiles.reduce((acc, fileData) => {
@@ -396,19 +476,23 @@ const Upload = () => {
           } catch (fileError) {
             console.error('File upload error:', fileError);
             // Don't fail the whole process for file upload errors
-            setError('Application created successfully, but some files failed to upload.');
+            setError(editMode 
+              ? 'Application updated successfully, but some files failed to upload.'
+              : 'Application created successfully, but some files failed to upload.');
           }
         }
         
-        setSuccess('Application submitted successfully! Redirecting to pipeline...');
+        setSuccess(editMode 
+          ? 'Application updated successfully! Redirecting...'
+          : 'Application submitted successfully! Redirecting to pipeline...');
         setTimeout(() => {
-          navigate('/pipeline');
+          navigate(editMode ? `/memo/${applicationId}` : '/pipeline');
         }, 2000);
       }
     } catch (err) {
       console.error('Submit error:', err);
       const errorInfo = apiUtils.handleError(err);
-      setError(`Failed to submit application: ${errorInfo.message}`);
+      setError(`Failed to ${editMode ? 'update' : 'submit'} application: ${errorInfo.message}`);
     } finally {
       setLoading(false);
     }
@@ -459,10 +543,12 @@ const Upload = () => {
           {/* Title */}
           <Box>
             <Typography variant="h4" fontWeight={700} color="text.primary" gutterBottom>
-              Submit New Application
+              {editMode ? 'Edit Application' : 'Submit New Application'}
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Upload startup materials for AI-powered evaluation and analysis
+              {editMode 
+                ? 'Update startup application details and materials'
+                : 'Upload startup materials for AI-powered evaluation and analysis'}
             </Typography>
           </Box>
         </Box>
@@ -916,7 +1002,9 @@ const Upload = () => {
                   disabled={loading || !isStepValid(activeStep)}
                   startIcon={<SendIcon />}
                 >
-                  {loading ? 'Submitting...' : 'Submit Application'}
+                  {loading 
+                    ? (editMode ? 'Updating...' : 'Submitting...') 
+                    : (editMode ? 'Update Application' : 'Submit Application')}
                 </Button>
               ) : (
                 <Button
