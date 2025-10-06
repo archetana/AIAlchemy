@@ -81,11 +81,10 @@ const Pipeline = () => {
         setPipelineData(statsResponse.data.data);
       }
       
-      if (applicationsResponse.data.success) {
-        setApplications(applicationsResponse.data.data);
-      } else {
-        // Use applications from stats if available
-        setApplications(statsResponse.data.data?.applications || []);
+      if (applicationsResponse.data && applicationsResponse.data.items) {
+        setApplications(applicationsResponse.data.items);
+      } else if (statsResponse.data.success && statsResponse.data.data?.applications) {
+        setApplications(statsResponse.data.data.applications);
       }
       
       setLastUpdated(new Date());
@@ -94,103 +93,27 @@ const Pipeline = () => {
       const errorInfo = apiUtils.handleError(err);
       setError(`Pipeline: ${errorInfo.message}`);
       
-      // Set fallback data for development
+      // Set fallback pipeline stats
       setPipelineData({
         stages: {
           new: 2,
-          data_processing: 2,
-          ai_analysis: 1,
-          manual_review: 1,
-          partner_review: 1,
-          completed: 1
+          data_processing: 0,
+          ai_analysis: 0,
+          manual_review: 0,
+          partner_review: 0,
+          completed: 0
         },
         conversion_rates: {
-          data_processing: 85.7,
-          ai_analysis: 73.2,
-          manual_review: 68.4,
-          partner_review: 85.0
+          data_processing: 0,
+          ai_analysis: 0,
+          manual_review: 0,
+          partner_review: 0
         },
-        bottlenecks: {
-          ai_analysis: 3,
-          data_processing: 2
-        }
+        bottlenecks: {}
       });
       
-      // Fallback applications data
-      setApplications([
-        {
-          id: 1,
-          company_name: 'TechFlow AI',
-          status: 'new',
-          ai_score: 83.08,
-          industry: 'AI/ML',
-          contact_name: 'Sarah Chen',
-          contact_email: 'sarah@techflow.ai',
-          funding_stage: 'Series A',
-          created_at: '2025-01-20T10:30:00Z',
-          assigned_analyst_id: 1,
-        },
-        {
-          id: 2,
-          company_name: 'GreenPay',
-          status: 'data_processing',
-          ai_score: 77.05,
-          industry: 'FinTech',
-          contact_name: 'Michael Rodriguez',
-          contact_email: 'mike@greenpay.com',
-          funding_stage: 'Seed',
-          created_at: '2025-01-19T15:45:00Z',
-          assigned_analyst_id: 2,
-        },
-        {
-          id: 3,
-          company_name: 'HealthLink Pro',
-          status: 'ai_analysis',
-          ai_score: 89.59,
-          industry: 'HealthTech',
-          contact_name: 'Dr. Lisa Wang',
-          contact_email: 'lisa@healthlink.pro',
-          funding_stage: 'Series B',
-          created_at: '2025-01-18T09:20:00Z',
-          assigned_analyst_id: 1,
-        },
-        {
-          id: 4,
-          company_name: 'EduSmart Labs',
-          status: 'manual_review',
-          ai_score: 90.41,
-          industry: 'EdTech',
-          contact_name: 'James Thompson',
-          contact_email: 'james@edusmartlabs.com',
-          funding_stage: 'Series A',
-          created_at: '2025-01-17T14:10:00Z',
-          assigned_analyst_id: 3,
-        },
-        {
-          id: 5,
-          company_name: 'CloudSync Solutions',
-          status: 'partner_review',
-          ai_score: 82.89,
-          industry: 'Enterprise SaaS',
-          contact_name: 'Rachel Kim',
-          contact_email: 'rachel@cloudsync.io',
-          funding_stage: 'Series A',
-          created_at: '2025-01-16T11:30:00Z',
-          assigned_analyst_id: 2,
-        },
-        {
-          id: 6,
-          company_name: 'Quantum Commerce',
-          status: 'completed',
-          ai_score: 70.37,
-          industry: 'E-commerce',
-          contact_name: 'David Park',
-          contact_email: 'david@quantumcommerce.com',
-          funding_stage: 'Seed',
-          created_at: '2025-01-15T16:45:00Z',
-          assigned_analyst_id: 1,
-        }
-      ]);
+      // Don't set fallback applications data - show empty state instead
+      setApplications([]);
     } finally {
       setLoading(false);
     }
