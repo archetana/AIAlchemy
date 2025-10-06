@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ Database disconnect error: {e}")
 
-# Create FastAPI app
+# Create FastAPI app with large file upload support
 app = FastAPI(
     title="AIAlchemy API",
     description="AI-powered startup evaluation platform with comprehensive REST API",

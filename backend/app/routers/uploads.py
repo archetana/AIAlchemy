@@ -267,6 +267,26 @@ async def delete_file(
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
 
+@router.get("/config")
+async def get_upload_configuration():
+    """Get file upload configuration and limits"""
+    from app.core.file_config import file_config
+    
+    return {
+        'success': True,
+        'max_file_sizes': file_config.get_size_limits_summary(),
+        'max_file_sizes_bytes': file_config.MAX_FILE_SIZES,
+        'max_request_size_mb': file_config.format_size_mb(file_config.MAX_REQUEST_SIZE),
+        'max_request_size_bytes': file_config.MAX_REQUEST_SIZE,
+        'upload_timeout_seconds': file_config.UPLOAD_TIMEOUT,
+        'supported_file_types': list(file_storage_service.ALLOWED_FILE_TYPES.keys()),
+        'allowed_extensions': {
+            mime_type: extensions 
+            for mime_type, extensions in file_storage_service.ALLOWED_FILE_TYPES.items()
+        },
+        'storage_backend': 'gcs' if file_storage_service.use_gcs else 'local'
+    }
+
 @router.get("/stats/summary")
 async def get_upload_stats(
     startup_id: Optional[int] = Query(None, description="Filter stats by startup ID"),

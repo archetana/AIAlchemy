@@ -16,6 +16,7 @@ import logging
 
 from ..core.config import get_settings
 from ..core.gcs_auth import get_gcs_client, is_gcs_available
+from ..core.file_config import file_config
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +50,10 @@ class FileStorageService:
         'audio/mp4': ['.m4a'],
     }
     
-    # Maximum file sizes (in bytes)
-    MAX_FILE_SIZES = {
-        'document': 50 * 1024 * 1024,  # 50MB for documents
-        'image': 10 * 1024 * 1024,     # 10MB for images
-        'video': 500 * 1024 * 1024,    # 500MB for videos
-        'audio': 100 * 1024 * 1024,    # 100MB for audio
-    }
+    # Maximum file sizes (in bytes) - now using centralized configuration
+    @property
+    def MAX_FILE_SIZES(self):
+        return file_config.MAX_FILE_SIZES
     
     def __init__(self):
         """Initialize file storage service"""
