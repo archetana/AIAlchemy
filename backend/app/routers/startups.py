@@ -104,7 +104,7 @@ async def create_startup(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create startup: {str(e)}")
 
-@router.put("/{startup_id}", response_model=StartupApplication)
+@router.put("/{startup_id}")
 async def update_startup(
     startup_id: int,
     startup_data: StartupApplicationUpdate,
@@ -117,7 +117,19 @@ async def update_startup(
         startup = await startup_crud.update_startup(db, startup_id, startup_data)
         if not startup:
             raise HTTPException(status_code=404, detail="Startup not found")
-        return startup
+        
+        # Return a simple response to avoid async serialization issues
+        return {
+            "success": True,
+            "message": "Startup application updated successfully",
+            "data": {
+                "id": startup.id,
+                "company_name": startup.company_name,
+                "contact_email": startup.contact_email,
+                "status": startup.status.value if startup.status else None,
+                "updated_at": startup.updated_at.isoformat() if startup.updated_at else None
+            }
+        }
         
     except HTTPException:
         raise
