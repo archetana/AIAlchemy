@@ -189,8 +189,9 @@ class StartupApplicationBase(BaseModel):
     @validator('funding_stage', pre=True)
     def format_funding_stage(cls, v):
         if isinstance(v, str):
-            # Converts "Pre-Seed" to "pre_seed"
-            return v.lower().replace(' ', '_')
+            # Converts "Pre-Seed" to "pre_seed" and "series_d+" to "series_d_plus"
+            v = v.lower().replace(' ', '_').replace('+', '_plus')
+            return v
         return v
 
 class StartupApplicationCreate(StartupApplicationBase):
