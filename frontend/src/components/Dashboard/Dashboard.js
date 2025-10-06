@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Grid,
@@ -32,6 +33,8 @@ import RecentApplications from './RecentApplications';
 import { dashboardApi, pipelineApi, apiUtils } from '../../services/api';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  
   // State management
   const [dashboardData, setDashboardData] = useState(null);
   const [pipelineData, setPipelineData] = useState(null);
@@ -148,14 +151,12 @@ const Dashboard = () => {
 
   // Handle view application
   const handleViewApplication = (applicationId) => {
-    console.log('View application:', applicationId);
-    // TODO: Navigate to application detail view
+    navigate(`/memo/${applicationId}`);
   };
 
   // Handle edit application
   const handleEditApplication = (applicationId) => {
-    console.log('Edit application:', applicationId);
-    // TODO: Navigate to application edit form
+    navigate(`/applications/${applicationId}/edit`);
   };
 
   // Close error snackbar

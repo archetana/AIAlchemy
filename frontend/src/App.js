@@ -14,6 +14,7 @@ import Pipeline from './components/Pipeline/Pipeline';
 import InvestmentMemo from './components/Memo/InvestmentMemo';
 import Upload from './components/Upload/Upload';
 import Settings from './components/Settings/Settings';
+import ApplicationEdit from './components/Application/ApplicationEdit';
 
 // Authentication Components
 import Login from './components/Auth/Login';
@@ -145,6 +146,14 @@ function App() {
               <ProtectedRoute>
                 <AppLayout>
                   <Upload />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/applications/:applicationId/edit" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ApplicationEdit />
                 </AppLayout>
               </ProtectedRoute>
             } />
