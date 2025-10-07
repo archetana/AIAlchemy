@@ -39,6 +39,10 @@ Your connection string will look like:
 postgresql://postgres:{password}@db.{project-id}.supabase.co:5432/postgres
 ```
 
+**⚠️ Important**: If your password contains special characters (`@`, `:`, `/`, etc.), they must be URL encoded:
+- Use the helper script: `python encode_password.py 'your_password' 'project_id'`
+- Or manually encode: `@` becomes `%40`, `:` becomes `%3A`, etc.
+
 ## Step 3: Run Setup Script
 
 In your backend directory, run the interactive setup:

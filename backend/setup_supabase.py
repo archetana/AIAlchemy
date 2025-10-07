@@ -37,8 +37,12 @@ def create_env_file():
     # Optional: Custom database name (default is postgres)
     db_name = input("🗄️  Database Name (default: postgres): ").strip() or "postgres"
     
+    # URL encode the password to handle special characters
+    import urllib.parse
+    encoded_password = urllib.parse.quote_plus(db_password)
+    
     # Build database URL
-    database_url = f"postgresql+asyncpg://postgres:{db_password}@db.{project_id}.supabase.co:5432/{db_name}"
+    database_url = f"postgresql+asyncpg://postgres:{encoded_password}@db.{project_id}.supabase.co:5432/{db_name}"
     
     # Create .env content
     env_content = f"""# Supabase Database Configuration
