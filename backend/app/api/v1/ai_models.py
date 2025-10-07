@@ -3,7 +3,7 @@ AI Models Management API
 Endpoints for managing AI models, providers, and cost optimization
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from app.services.model_agnostic_service import model_service, EmbeddingModel, ModelProvider
@@ -286,9 +286,9 @@ async def generate_embedding(
 
 @router.post("/embeddings/batch")
 async def generate_embeddings_batch(
-    texts: List[str] = Field(..., description="List of texts to generate embeddings for"),
-    model: Optional[str] = Field(None, description="Model to use for all embeddings"),
-    dimensions: Optional[int] = Field(None, description="Embedding dimensions"),
+    texts: List[str] = Body(..., description="List of texts to generate embeddings for"),
+    model: Optional[str] = Body(None, description="Model to use for all embeddings"),
+    dimensions: Optional[int] = Body(None, description="Embedding dimensions"),
     current_user: Dict = Depends(get_current_user)
 ):
     """Generate embeddings for multiple texts"""
