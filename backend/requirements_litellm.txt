@@ -1,0 +1,13 @@
+# Model-Agnostic AI Dependencies
+# Add these to your existing requirements.txt
+
+litellm==1.44.22                # Model-agnostic AI package
+sentence-transformers==2.2.2     # Local embedding models
+torch>=1.9.0                     # Required for local models
+transformers>=4.21.0             # HuggingFace models
+numpy>=1.21.0                    # Mathematical operations
+tiktoken>=0.5.1                  # Token counting for various models
+
+# Optional: For local model hosting
+# ollama-python==0.1.7           # Ollama integration
+# huggingface-hub>=0.16.4        # HuggingFace models

@@ -10,10 +10,10 @@ import json
 import asyncio
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
-import openai
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.supabase_client import get_supabase_client
 from app.core.config import get_settings
+from app.services.model_agnostic_service import model_service, EmbeddingModel
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,49 +24,43 @@ class VectorDocumentService:
     def __init__(self):
         self.settings = get_settings()
         self.supabase = get_supabase_client()
-        self.openai_client = None
-        
-        # Initialize OpenAI client if API key is available
-        if self.settings.gemini_api_key:  # We'll use this for OpenAI key for now
-            openai.api_key = self.settings.gemini_api_key
-            self.openai_client = openai
+        self.model_service = model_service
     
-    async def generate_embedding(self, text: str, model: str = "text-embedding-ada-002") -> List[float]:
-        """Generate embeddings using OpenAI or fallback to local model"""
+    async def generate_embedding(
+        self, 
+        text: str, 
+        model: Optional[EmbeddingModel] = None,
+        dimensions: Optional[int] = None
+    ) -> Tuple[List[float], Dict[str, Any]]:
+        """Generate embeddings using model-agnostic service"""
         try:
-            if self.openai_client:
-                response = await self.openai_client.embeddings.acreate(
-                    model=model,
-                    input=text
-                )
-                return response.data[0].embedding
-            else:
-                # Fallback to a simple hash-based embedding for development
-                # In production, use a proper embedding model
-                logger.warning("No OpenAI API key found, using fallback embedding")
-                return self._generate_fallback_embedding(text)
+            embedding, metadata = await self.model_service.generate_embedding(
+                text=text,
+                model=model,
+                dimensions=dimensions
+            )
+            return embedding, metadata
                 
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
-            return self._generate_fallback_embedding(text)
+            # Fallback to simple embedding
+            fallback_embedding = self._generate_fallback_embedding(text, dimensions or 1536)
+            fallback_metadata = {
+                "model": "fallback",
+                "provider": "local",
+                "dimensions": len(fallback_embedding),
+                "cost_usd": 0.0,
+                "processing_time_seconds": 0.0,
+                "text_length": len(text),
+                "timestamp": datetime.utcnow().isoformat(),
+                "error": str(e)
+            }
+            return fallback_embedding, fallback_metadata
     
     def _generate_fallback_embedding(self, text: str, dimensions: int = 1536) -> List[float]:
         """Generate a deterministic fallback embedding for development"""
-        # Create a hash of the text and convert to embedding-like vector
-        text_hash = hashlib.md5(text.encode()).hexdigest()
-        
-        # Convert hex to numbers and normalize to create embedding
-        embedding = []
-        for i in range(0, len(text_hash), 2):
-            hex_pair = text_hash[i:i+2]
-            value = int(hex_pair, 16) / 255.0  # Normalize to 0-1
-            embedding.append(value - 0.5)  # Center around 0
-        
-        # Pad or truncate to desired dimensions
-        while len(embedding) < dimensions:
-            embedding.extend(embedding[:min(len(embedding), dimensions - len(embedding))])
-        
-        return embedding[:dimensions]
+        # Use the model service's fallback method
+        return self.model_service._generate_fallback_embedding(text, dimensions)
     
     def _clean_text_for_embedding(self, raw_text: str) -> str:
         """Clean and prepare text for embedding generation"""
@@ -102,8 +96,8 @@ class VectorDocumentService:
         # Clean text for embedding
         cleaned_text = self._clean_text_for_embedding(raw_text)
         
-        # Generate embedding
-        embedding = await self.generate_embedding(cleaned_text)
+        # Generate embedding using model-agnostic service
+        embedding, embedding_metadata = await self.generate_embedding(cleaned_text)
         
         # Prepare data for insertion
         document_data = {
@@ -120,7 +114,8 @@ class VectorDocumentService:
             "content_categories": content_categories or [],
             "key_entities": key_entities or {},
             "token_count": len(cleaned_text.split()),
-            "embedding_model": "text-embedding-ada-002" if self.openai_client else "fallback"
+            "embedding_model": embedding_metadata.get("model", "unknown"),
+            "processing_cost_cents": int(embedding_metadata.get("cost_usd", 0) * 100)  # Store cost in cents
         }
         
         try:
@@ -154,7 +149,7 @@ class VectorDocumentService:
         for i, chunk_text in enumerate(chunks):
             # Generate embedding for chunk
             cleaned_chunk = self._clean_text_for_embedding(chunk_text)
-            chunk_embedding = await self.generate_embedding(cleaned_chunk)
+            chunk_embedding, chunk_metadata = await self.generate_embedding(cleaned_chunk)
             
             # Determine chunk content type based on keywords
             content_type = self._classify_chunk_content(chunk_text)
@@ -274,7 +269,7 @@ class VectorDocumentService:
         """Perform semantic search across documents"""
         
         # Generate embedding for query
-        query_embedding = await self.generate_embedding(query_text)
+        query_embedding, query_metadata = await self.generate_embedding(query_text)
         
         try:
             # Call the stored function for semantic search
@@ -307,7 +302,7 @@ class VectorDocumentService:
             return cache_result
         
         # Generate embedding for query
-        query_embedding = await self.generate_embedding(query_text)
+        query_embedding, query_metadata = await self.generate_embedding(query_text)
         
         try:
             start_time = datetime.now()
