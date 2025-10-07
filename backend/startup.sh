@@ -25,13 +25,36 @@ else
     echo "📁 Using local file storage"
 fi
 
-# Initialize database on startup (reliable sync method)
-echo "🔧 Creating database tables..."
-python3 create_tables_sync.py || echo "⚠️ Table creation warning"
+# Verify SUP and construct database URL
+if [ "$USE_SUPABASE" = "true" ]; then
+    echo "🔗 Supabase storage enabled"
+    if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+        echo "✅ Supabase credentials found"
+        DATABASE_URL="postgresql+asyncpg://postgres:[pooled_connection]@${SUPABASE_URL.replace('https://', '').replace('http://', '')}:5432/postgres"
+    else
+        echo "⚠️ Supabase enabled but no credentials found"
+    fi
+fi
 
-# Also run the standalone init for sample data
-echo "🔧 Adding sample data..."
-python3 init_db_standalone.py || echo "⚠️ Sample data init warning"
+# Verify SQLite configuration and construct database URL
+if [ "$USE_SQLITE" = "true" ]; then
+    echo "🗂️ SQLite storage enabled"
+    if [ -n "$SQLITE_DATABASE_URL" ]; then
+        echo "✅ SQLite database URL found"
+        DATABASE_URL="$SQLITE_DATABASE_URL"
+        # Initialize database on startup (reliable sync method)
+        echo "🔧 Creating database tables..."
+        python3 create_tables_sync.py || echo "⚠️ Table creation warning"
+
+        # Also run the standalone init for sample data
+        echo "🔧 Adding sample data..."
+        python3 init_db_standalone.py || echo "⚠️ Sample data init warning"
+    else
+        echo "⚠️ SQLite enabled but no database URL found"
+    fi
+fi
+
+
 
 # Start the application
 echo "✅ Starting FastAPI application"
