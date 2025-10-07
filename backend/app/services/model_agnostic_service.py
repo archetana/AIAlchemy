@@ -42,10 +42,16 @@ class ModelProvider(Enum):
     OLLAMA = "ollama"
     LOCAL = "local"
     GEMINI = "gemini"
+    NVIDIA_NIM = "nvidia_nim"
     FALLBACK = "fallback"
 
 class EmbeddingModel(Enum):
     """Supported embedding models"""
+    # NVIDIA NIM (Priority - FREE CREDITS!)
+    NVIDIA_NV_EMBED_V2 = "nvidia/nv-embed-v2"
+    NVIDIA_EMBED_QA_MISTRAL_7B_V2 = "nvidia/nv-embedqa-mistral-7b-v2"  # Deprecated but may still work
+    NVIDIA_EMBED_CODE = "nvidia/nv-embedcode"
+    
     # OpenAI
     OPENAI_ADA_002 = "text-embedding-ada-002"
     OPENAI_3_SMALL = "text-embedding-3-small"
@@ -97,14 +103,22 @@ class ModelAgnosticService:
         return {
             # Model preferences (in order of preference)
             "embedding_models": [
-                EmbeddingModel.OPENAI_3_SMALL,      # Most cost-effective OpenAI
-                EmbeddingModel.COHERE_ENGLISH,      # Good alternative
-                EmbeddingModel.LOCAL_MINILM,        # Fast local model
-                EmbeddingModel.FALLBACK_HASH        # Always available
+                EmbeddingModel.NVIDIA_NV_EMBED_V2,       # PRIORITY: FREE CREDITS! 
+                EmbeddingModel.NVIDIA_EMBED_QA_MISTRAL_7B_V2,  # Backup NVIDIA model
+                EmbeddingModel.LOCAL_MINILM,             # Fast local model (free)
+                EmbeddingModel.OPENAI_3_SMALL,           # Most cost-effective OpenAI
+                EmbeddingModel.COHERE_ENGLISH,           # Good alternative
+                EmbeddingModel.FALLBACK_HASH             # Always available
             ],
             
             # Provider configurations
             "providers": {
+                ModelProvider.NVIDIA_NIM: {
+                    "api_key": os.getenv("NVIDIA_NIM_API_KEY"),
+                    "base_url": os.getenv("NVIDIA_NIM_BASE_URL", "https://api.nvcf.nvidia.com/v2/nvcf"),
+                    "enabled": bool(os.getenv("NVIDIA_NIM_API_KEY")),
+                    "credits_remaining": int(os.getenv("NVIDIA_NIM_CREDITS", "0"))  # Track remaining credits
+                },
                 ModelProvider.OPENAI: {
                     "api_key": os.getenv("OPENAI_API_KEY"),
                     "enabled": bool(os.getenv("OPENAI_API_KEY"))
@@ -156,6 +170,12 @@ class ModelAgnosticService:
     def _setup_litellm(self):
         """Setup LiteLLM with available providers"""
         # Set API keys for available providers
+        if self.config["providers"][ModelProvider.NVIDIA_NIM]["enabled"]:
+            # NVIDIA NIM uses OpenAI-compatible format
+            nvidia_config = self.config["providers"][ModelProvider.NVIDIA_NIM]
+            litellm.api_base = nvidia_config["base_url"]
+            os.environ["NVIDIA_NIM_API_KEY"] = nvidia_config["api_key"]
+        
         if self.config["providers"][ModelProvider.OPENAI]["enabled"]:
             os.environ["OPENAI_API_KEY"] = self.config["providers"][ModelProvider.OPENAI]["api_key"]
         
@@ -263,6 +283,10 @@ class ModelAgnosticService:
         if model == EmbeddingModel.FALLBACK_HASH:
             return self._generate_fallback_embedding(text, dimensions or 1536), 0.0
         
+        # NVIDIA NIM models (special handling for OpenAI-compatible API)
+        if model in [EmbeddingModel.NVIDIA_NV_EMBED_V2, EmbeddingModel.NVIDIA_EMBED_QA_MISTRAL_7B_V2, EmbeddingModel.NVIDIA_EMBED_CODE]:
+            return await self._generate_nvidia_nim_embedding(text, model, dimensions)
+        
         # Local models
         if model in [EmbeddingModel.LOCAL_MINILM, EmbeddingModel.LOCAL_MPNET, EmbeddingModel.LOCAL_DISTILBERT]:
             return await self._generate_local_embedding(text, model), 0.0
@@ -303,6 +327,77 @@ class ModelAgnosticService:
         except Exception as e:
             logger.error(f"API embedding failed for {model.value}: {e}")
             raise
+    
+    async def _generate_nvidia_nim_embedding(
+        self, 
+        text: str, 
+        model: EmbeddingModel,
+        dimensions: Optional[int] = None
+    ) -> Tuple[List[float], float]:
+        """Generate embedding using NVIDIA NIM API (OpenAI-compatible)"""
+        
+        try:
+            import httpx
+            
+            nvidia_config = self.config["providers"][ModelProvider.NVIDIA_NIM]
+            api_key = nvidia_config["api_key"]
+            base_url = nvidia_config["base_url"]
+            
+            # Check if we have credits remaining
+            credits_remaining = nvidia_config.get("credits_remaining", 0)
+            if credits_remaining <= 0:
+                logger.warning("No NVIDIA NIM credits remaining, failing to fallback")
+                raise Exception("No NVIDIA NIM credits remaining")
+            
+            # Prepare OpenAI-compatible request
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            # NVIDIA NIM uses OpenAI-compatible /v1/embeddings endpoint
+            url = f"{base_url}/v1/embeddings"
+            
+            payload = {
+                "input": text,
+                "model": model.value,
+                "encoding_format": "float"
+            }
+            
+            # Add dimensions if supported
+            if dimensions and model == EmbeddingModel.NVIDIA_NV_EMBED_V2:
+                payload["dimensions"] = dimensions
+            
+            async with httpx.AsyncClient(timeout=self.config["timeout_seconds"]) as client:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                
+                data = response.json()
+                embedding = data["data"][0]["embedding"]
+                
+                # NVIDIA NIM is FREE with credits - track usage but no cost
+                self._track_nvidia_credit_usage()
+                
+                logger.info(f"NVIDIA NIM embedding generated: {len(embedding)} dimensions, FREE with credits")
+                
+                return embedding, 0.0  # FREE!
+                
+        except Exception as e:
+            logger.error(f"NVIDIA NIM embedding failed for {model.value}: {e}")
+            raise
+    
+    def _track_nvidia_credit_usage(self):
+        """Track NVIDIA NIM credit usage"""
+        nvidia_config = self.config["providers"][ModelProvider.NVIDIA_NIM]
+        current_credits = nvidia_config.get("credits_remaining", 0)
+        
+        if current_credits > 0:
+            nvidia_config["credits_remaining"] = current_credits - 1
+            logger.debug(f"NVIDIA NIM credits remaining: {nvidia_config['credits_remaining']}")
+        
+        # Log when approaching credit limit
+        if nvidia_config["credits_remaining"] <= 100:  # Warning at 100 credits
+            logger.warning(f"NVIDIA NIM credits running low: {nvidia_config['credits_remaining']} remaining")
     
     async def _generate_local_embedding(self, text: str, model: EmbeddingModel) -> List[float]:
         """Generate embedding using local model"""
@@ -376,6 +471,14 @@ class ModelAgnosticService:
         if model == EmbeddingModel.FALLBACK_HASH:
             return True
         
+        # NVIDIA NIM models
+        if model in [EmbeddingModel.NVIDIA_NV_EMBED_V2, EmbeddingModel.NVIDIA_EMBED_QA_MISTRAL_7B_V2, EmbeddingModel.NVIDIA_EMBED_CODE]:
+            nvidia_config = self.config["providers"][ModelProvider.NVIDIA_NIM]
+            return (
+                nvidia_config["enabled"] and
+                nvidia_config.get("credits_remaining", 0) > 0  # Must have credits
+            )
+        
         # Local models
         if model in [EmbeddingModel.LOCAL_MINILM, EmbeddingModel.LOCAL_MPNET, EmbeddingModel.LOCAL_DISTILBERT]:
             return (
@@ -393,7 +496,9 @@ class ModelAgnosticService:
     def _get_model_provider(self, model: EmbeddingModel) -> ModelProvider:
         """Get provider for a model"""
         
-        if model.value.startswith("text-embedding-"):
+        if model.value.startswith("nvidia/"):
+            return ModelProvider.NVIDIA_NIM
+        elif model.value.startswith("text-embedding-"):
             return ModelProvider.OPENAI
         elif model.value.startswith("azure/"):
             return ModelProvider.AZURE_OPENAI
@@ -416,6 +521,11 @@ class ModelAgnosticService:
         
         # Cost per 1K tokens (approximate)
         costs_per_1k_tokens = {
+            # NVIDIA NIM models are FREE with credits!
+            EmbeddingModel.NVIDIA_NV_EMBED_V2: 0.0,
+            EmbeddingModel.NVIDIA_EMBED_QA_MISTRAL_7B_V2: 0.0,
+            EmbeddingModel.NVIDIA_EMBED_CODE: 0.0,
+            # OpenAI models
             EmbeddingModel.OPENAI_ADA_002: 0.0001,
             EmbeddingModel.OPENAI_3_SMALL: 0.00002,
             EmbeddingModel.OPENAI_3_LARGE: 0.00013,
@@ -500,7 +610,7 @@ class ModelAgnosticService:
             models_info[model.value] = {
                 "provider": provider.value,
                 "available": is_available,
-                "cost_estimate": "Free" if provider in [ModelProvider.LOCAL, ModelProvider.FALLBACK] else "Paid",
+                "cost_estimate": "Free" if provider in [ModelProvider.LOCAL, ModelProvider.FALLBACK, ModelProvider.NVIDIA_NIM] else "Paid",
                 "dimensions": self._get_model_dimensions(model)
             }
         
@@ -510,12 +620,19 @@ class ModelAgnosticService:
         """Get embedding dimensions for model"""
         
         dimensions_map = {
+            # NVIDIA NIM models - high quality embeddings!
+            EmbeddingModel.NVIDIA_NV_EMBED_V2: 4096,      # Latest generalist model
+            EmbeddingModel.NVIDIA_EMBED_QA_MISTRAL_7B_V2: 4096,  # QA-optimized
+            EmbeddingModel.NVIDIA_EMBED_CODE: 4096,       # Code-optimized
+            # OpenAI models
             EmbeddingModel.OPENAI_ADA_002: 1536,
             EmbeddingModel.OPENAI_3_SMALL: 1536,
             EmbeddingModel.OPENAI_3_LARGE: 3072,
+            # Local models
             EmbeddingModel.LOCAL_MINILM: 384,
             EmbeddingModel.LOCAL_MPNET: 768,
             EmbeddingModel.LOCAL_DISTILBERT: 768,
+            # Cohere models
             EmbeddingModel.COHERE_ENGLISH: 1024,
             EmbeddingModel.COHERE_MULTILINGUAL: 1024,
             EmbeddingModel.FALLBACK_HASH: 1536

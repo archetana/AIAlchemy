@@ -72,8 +72,13 @@ async def get_available_models(
                 description=f"{info['provider']} embedding model with {info['dimensions']} dimensions"
             ))
         
-        # Sort by availability and cost
-        result.sort(key=lambda x: (not x.available, x.cost_estimate == "Paid", x.model_name))
+        # Sort by availability, cost, and prioritize NVIDIA NIM
+        result.sort(key=lambda x: (
+            not x.available, 
+            x.cost_estimate == "Paid", 
+            not x.model_name.startswith("nvidia/"),  # NVIDIA models first
+            x.model_name
+        ))
         
         return result
         
@@ -96,12 +101,20 @@ async def get_providers_status(
                 
             provider_config = model_service.config["providers"].get(provider, {})
             
-            providers_status[provider.value] = {
+            status_info = {
                 "name": provider.value,
                 "enabled": provider_config.get("enabled", False),
                 "has_credentials": bool(provider_config.get("api_key") or provider_config.get("enabled")),
                 "description": _get_provider_description(provider)
             }
+            
+            # Add special info for NVIDIA NIM
+            if provider == ModelProvider.NVIDIA_NIM:
+                status_info["credits_remaining"] = provider_config.get("credits_remaining", 0)
+                status_info["free_tier"] = True
+                status_info["setup_url"] = "https://build.nvidia.com/"
+            
+            providers_status[provider.value] = status_info
         
         return {
             "providers": providers_status,
@@ -113,9 +126,63 @@ async def get_providers_status(
         logger.error(f"Error getting provider status: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get provider status: {str(e)}")
 
+@router.get("/nvidia-nim/status")
+async def get_nvidia_nim_status(
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get detailed NVIDIA NIM status and credit information"""
+    
+    try:
+        nvidia_config = model_service.config["providers"][ModelProvider.NVIDIA_NIM]
+        
+        # Check available models
+        nvidia_models = [
+            model for model in EmbeddingModel 
+            if model.value.startswith("nvidia/")
+        ]
+        
+        available_models = []
+        for model in nvidia_models:
+            is_available = model_service._is_model_available(model)
+            available_models.append({
+                "model": model.value,
+                "available": is_available,
+                "dimensions": model_service._get_model_dimensions(model),
+                "description": {
+                    EmbeddingModel.NVIDIA_NV_EMBED_V2: "Latest generalist embedding model (RECOMMENDED)",
+                    EmbeddingModel.NVIDIA_EMBED_QA_MISTRAL_7B_V2: "QA-optimized model (DEPRECATED 12/19/2025)",
+                    EmbeddingModel.NVIDIA_EMBED_CODE: "Code retrieval and search model"
+                }.get(model, "NVIDIA embedding model")
+            })
+        
+        return {
+            "enabled": nvidia_config.get("enabled", False),
+            "has_api_key": bool(nvidia_config.get("api_key")),
+            "credits_remaining": nvidia_config.get("credits_remaining", 0),
+            "base_url": nvidia_config.get("base_url"),
+            "available_models": available_models,
+            "setup_instructions": {
+                "step_1": "Visit https://build.nvidia.com/ to sign up",
+                "step_2": "Get your free API key (starts with 'nvapi-')",
+                "step_3": "Set NVIDIA_NIM_API_KEY environment variable",
+                "step_4": "Set NVIDIA_NIM_CREDITS=1000 (your initial credits)"
+            },
+            "benefits": {
+                "free_credits": "1,000-5,000 free API calls",
+                "high_quality": "4096-dimensional embeddings",
+                "openai_compatible": "Drop-in replacement for OpenAI API",
+                "cost_savings": "100% savings during free tier"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting NVIDIA NIM status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get NVIDIA NIM status: {str(e)}")
+
 def _get_provider_description(provider: ModelProvider) -> str:
     """Get human-readable description for provider"""
     descriptions = {
+        ModelProvider.NVIDIA_NIM: "🚀 NVIDIA NIM - FREE CREDITS! High-quality AI models",
         ModelProvider.OPENAI: "OpenAI GPT and embedding models",
         ModelProvider.AZURE_OPENAI: "Azure OpenAI Service",
         ModelProvider.ANTHROPIC: "Anthropic Claude models",
