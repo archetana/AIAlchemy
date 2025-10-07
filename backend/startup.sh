@@ -3,6 +3,9 @@ set -e
 
 echo "🚀 Starting AIAlchemy Backend"
 
+#Print all environment variables
+env | sort
+
 # Handle GCS authentication if base64 key is provided
 if [ -n "$GCS_SERVICE_ACCOUNT_KEY_BASE64" ]; then
     echo "🔑 Setting up GCS authentication from base64 key..."

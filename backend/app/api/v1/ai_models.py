@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from app.services.model_agnostic_service import model_service, EmbeddingModel, ModelProvider
-from app.api.deps import get_current_user
+from app.api.auth import get_current_user
 import logging
 import time
 
