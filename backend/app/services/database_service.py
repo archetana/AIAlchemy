@@ -16,9 +16,17 @@ class DatabaseService:
     """Hybrid database service that works with both SQLAlchemy and Supabase"""
     
     def __init__(self):
-        self.use_supabase = os.getenv("USE_SUPABASE", "false").lower() == "true"
+        from app.core.config import get_settings
+        settings = get_settings()
+        
+        # Use the smart detection logic from config
+        self.use_supabase = settings.should_use_supabase
+        
         if self.use_supabase:
             self.supabase = get_supabase_client()
+            print(f"🔧 DatabaseService: Using Supabase (URL: {settings.supabase_url[:30]}...)")
+        else:
+            print(f"🔧 DatabaseService: Using SQLAlchemy ({settings.database_url})")
     
     async def create_startup(
         self, 

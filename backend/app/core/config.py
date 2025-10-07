@@ -43,6 +43,36 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = Field(default="", env="SUPABASE_SERVICE_ROLE_KEY")
     use_supabase: bool = Field(default=False, env="USE_SUPABASE")
     
+    @property
+    def should_use_supabase(self) -> bool:
+        """
+        Determine if Supabase should be used based on environment and credentials.
+        Automatically use Supabase in production or when credentials are available.
+        """
+        # Force Supabase if USE_SUPABASE is explicitly set to true
+        if self.use_supabase:
+            return True
+        
+        # Auto-detect Supabase usage in production environments
+        if self.environment in ["production", "staging"]:
+            return bool(self.supabase_url and self.supabase_anon_key)
+        
+        # Use Supabase if credentials are available (even in development)
+        return bool(self.supabase_url and self.supabase_anon_key)
+    
+    @property
+    def effective_database_url(self) -> str:
+        """
+        Get the effective database URL, preferring Supabase over SQLite when available.
+        """
+        if self.should_use_supabase:
+            # Construct PostgreSQL URL from Supabase credentials
+            # Note: This is for SQLAlchemy direct connections, not recommended for production
+            # The actual database operations should use the Supabase client
+            return f"postgresql+asyncpg://postgres:[pooled_connection]@{self.supabase_url.replace('https://', '').replace('http://', '')}:5432/postgres"
+        
+        return self.database_url
+    
     # Redis Configuration
     redis_url: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
     
