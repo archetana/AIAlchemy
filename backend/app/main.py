@@ -10,6 +10,7 @@ import os
 
 # Import routers
 from app.routers import dashboard, startups, pipeline, memos, uploads, settings, auth, document_processing
+from app.api.v1 import vector_documents
 from app.core.database import database_manager
 from app.auth.auth_middleware import AuthenticationMiddleware, SecurityHeadersMiddleware
 
@@ -83,6 +84,7 @@ app.include_router(memos.router)
 app.include_router(uploads.router)
 app.include_router(settings.router)
 app.include_router(document_processing.router)  # New document processing pipeline
+app.include_router(vector_documents.router)  # Vector database for document extraction
 
 @app.get("/")
 async def root():
@@ -100,7 +102,8 @@ async def root():
             "memos": "/api/memos/",
             "uploads": "/api/uploads/",
             "settings": "/api/settings/",
-            "document_processing": "/api/v1/document-processing/"
+            "document_processing": "/api/v1/document-processing/",
+            "vector_documents": "/vector-documents/"
         },
         "features": [
             "Startup application management",
