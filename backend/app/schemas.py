@@ -216,6 +216,15 @@ class StartupApplicationUpdate(BaseModel):
     assigned_analyst_id: Optional[int] = None
     processing_notes: Optional[str] = None
 
+    # Add the same validator for funding_stage
+    @validator('funding_stage', pre=True)
+    def format_funding_stage(cls, v):
+        if isinstance(v, str):
+            # Converts "Pre-Seed" to "pre_seed" and "series_d+" to "series_d_plus"
+            v = v.lower().replace(' ', '_').replace('-', '_').replace('+', '_plus')
+            return v
+        return v
+
 class StartupApplication(StartupApplicationBase):
     id: int
     industry_id: Optional[int] = None
