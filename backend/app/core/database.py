@@ -63,16 +63,13 @@ class DatabaseManager:
                 "future": True
             }
             
-            # Only add pool settings for PostgreSQL (not SQLite)
-            if not database_url.startswith("sqlite"):
-                engine_kwargs.update({
-                    "pool_size": settings.database_pool_size,
-                    "max_overflow": settings.database_max_overflow,
-                    "poolclass": NullPool if settings.is_development else None,
-                })
-            else:
+            # Pool configuration based on database type
+            if database_url.startswith("sqlite"):
                 # For SQLite, use NullPool to avoid connection pool issues
                 engine_kwargs["poolclass"] = NullPool
+            elif "postgresql" in database_url:
+                # For PostgreSQL with asyncpg, only use pool_size (not max_overflow)
+                engine_kwargs["pool_size"] = 5
             
             self.engine = create_async_engine(
                 database_url,

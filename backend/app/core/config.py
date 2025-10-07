@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=10, env="DATABASE_POOL_SIZE")
     database_max_overflow: int = Field(default=20, env="DATABASE_MAX_OVERFLOW")
     
+    # Supabase Configuration
+    supabase_url: str = Field(default="", env="SUPABASE_URL")
+    supabase_anon_key: str = Field(default="", env="SUPABASE_ANON_KEY")
+    supabase_service_role_key: str = Field(default="", env="SUPABASE_SERVICE_ROLE_KEY")
+    use_supabase: bool = Field(default=False, env="USE_SUPABASE")
+    
     # Redis Configuration
     redis_url: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
     
