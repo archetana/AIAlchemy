@@ -1,3 +1,5 @@
+# Consolidated runtime requirements (core + optional)
+
 # Core FastAPI dependencies
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
@@ -11,6 +13,14 @@ aiosqlite==0.19.0
 asyncpg==0.29.0
 psycopg2-binary==2.9.9
 supabase==2.21.1
+
+# Model-agnostic AI
+litellm==1.44.22
+sentence-transformers==2.2.2
+torch>=1.9.0
+transformers>=4.21.0
+numpy>=1.21.0
+tiktoken>=0.5.1
 
 # Production server
 gunicorn==21.2.0

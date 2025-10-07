@@ -8,6 +8,23 @@ pydantic-settings==2.1.0
 sqlalchemy==2.0.23
 alembic==1.13.1
 aiosqlite==0.19.0
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+supabase==2.21.1
+
+# Model-Agnostic AI Dependencies
+# Add these to your existing requirements.txt
+
+litellm==1.44.22                # Model-agnostic AI package
+sentence-transformers==2.2.2     # Local embedding models
+torch>=1.9.0                     # Required for local models
+transformers>=4.21.0             # HuggingFace models
+numpy>=1.21.0                    # Mathematical operations
+tiktoken>=0.5.1                  # Token counting for various models
+
+# Optional: For local model hosting
+# ollama-python==0.1.7           # Ollama integration
+# huggingface-hub>=0.16.4        # HuggingFace models
 
 # Production server
 gunicorn==21.2.0

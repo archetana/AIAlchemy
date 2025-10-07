@@ -27,18 +27,8 @@ COPY requirements-core.txt requirements.txt ./
 RUN echo "=== Upgrading pip ==="
 RUN pip install --upgrade pip
 
-RUN echo "=== Installing core dependencies ==="
-RUN pip install --no-cache-dir -r requirements-core.txt
-
-RUN echo "=== Installing optional AI dependencies ==="
-# Install AI dependencies with error handling - continue if some fail
-RUN pip install --no-cache-dir google-generativeai==0.7.2 google-cloud-documentai==2.22.0 google-auth==2.23.4 || echo "Warning: Some AI dependencies failed to install"
-
-RUN echo "=== Installing document processing dependencies ==="
-RUN pip install --no-cache-dir PyPDF2==3.0.1 python-pptx==0.6.23 python-docx==1.1.0 Pillow==10.1.0 || echo "Warning: Some document processing dependencies failed"
-
-RUN echo "=== Installing optional security and task queue dependencies ==="
-RUN pip install --no-cache-dir pyclamd==0.4.0 celery==5.3.4 redis==5.0.1 || echo "Warning: Some optional dependencies failed to install"
+RUN echo "=== Installing dependencies ==="
+RUN pip install --no-cache-dir -r requirements.txt
 
 RUN echo "=== Installation completed ==="
 
