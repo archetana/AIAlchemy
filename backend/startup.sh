@@ -28,9 +28,8 @@ fi
 # Verify SUP and construct database URL
 if [ "$USE_SUPABASE" = "true" ]; then
     echo "🔗 Supabase storage enabled"
-    if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+    if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ] && [ -n "$DATABASE_URL" ]; then
         echo "✅ Supabase credentials found"
-        DATABASE_URL="postgresql+asyncpg://postgres:[pooled_connection]@${SUPABASE_URL.replace('https://', '').replace('http://', '')}:5432/postgres"
     else
         echo "⚠️ Supabase enabled but no credentials found"
     fi
