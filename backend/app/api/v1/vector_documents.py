@@ -10,8 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.services.vector_document_service import vector_document_service
 from app.services.database_service import db_service
-from app.api.deps import get_current_user
+
 import logging
+
+from app.api.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
