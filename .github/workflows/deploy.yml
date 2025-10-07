@@ -75,7 +75,7 @@ jobs:
           --min-instances 0 \
           --max-instances 10 \
           --port 8080 \
-          --set-env-vars="DATABASE_URL=sqlite+aiosqlite://./aialchemy.db,USE_GOOGLE_CLOUD_STORAGE=true,GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GCS_BUCKET_NAME }},GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},SECRET_KEY=${{ secrets.SECRET_KEY }},JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }},ENVIRONMENT=production,DEBUG=false,BUCKET_APP_STORAGE=${{ secrets.GCS_BUCKET_NAME }},VERTEX_AI_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},VERTEX_AI_LOCATION=us-central1,GCS_SERVICE_ACCOUNT_KEY_BASE64=$(cat gcs_key_base64.txt)"
+          --set-env-vars="DATABASE_URL=sqlite+aiosqlite://./aialchemy.db,USE_SUPABASE=${{ secrets.USE_SUPABASE }},SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},USE_GOOGLE_CLOUD_STORAGE=true,GOOGLE_CLOUD_STORAGE_BUCKET=${{ secrets.GCS_BUCKET_NAME }},GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},SECRET_KEY=${{ secrets.SECRET_KEY }},JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }},ENVIRONMENT=production,DEBUG=false,BUCKET_APP_STORAGE=${{ secrets.GCS_BUCKET_NAME }},VERTEX_AI_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},VERTEX_AI_LOCATION=us-central1,GCS_SERVICE_ACCOUNT_KEY_BASE64=$(cat gcs_key_base64.txt)"
         
         rm gcs_key_base64.txt
 
