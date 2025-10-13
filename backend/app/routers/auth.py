@@ -126,35 +126,62 @@ async def register(
                 detail="Password processing incomplete. Please try again."
             )
         
-        # Create new user
+        # Create new user with role selection support
+        # Validate role if provided, otherwise default to VIEWER
+        user_role = UserRole.VIEWER  # Default role
+        if hasattr(user_data, 'role') and user_data.role:
+            try:
+                # Validate the role enum
+                user_role = UserRole(user_data.role)
+            except ValueError:
+                # Invalid role provided, log warning and use default
+                logger.warning("Invalid role provided during registration",
+                             provided_role=user_data.role,
+                             email=user_data.email)
+                user_role = UserRole.VIEWER
+
         new_user = User(
             email=user_data.email,
             full_name=user_data.full_name,
             title=user_data.title,
             phone=user_data.phone,
             hashed_password=password_validation["hashed_password"],
-            role=UserRole.VIEWER,  # Default role for new registrations
+            role=user_role,
             is_active=True,  # Auto-activate for now (in production, might require email verification)
             created_at=datetime.now(timezone.utc)
         )
-        
+
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
-        
+
+        # Create token payload for auto-login after registration
+        token_payload = {
+            "sub": str(new_user.id),
+            "email": new_user.email,
+            "role": new_user.role.value,
+            "full_name": new_user.full_name
+        }
+
+        # Generate tokens for automatic login
+        tokens = jwt_handler.create_token_pair(token_payload)
+
         # Convert to profile schema
         user_profile = UserProfile.model_validate(new_user)
-        
-        logger.info("User registered successfully", 
-                   user_id=new_user.id, 
-                   email=new_user.email)
-        
+
+        logger.info("User registered successfully",
+                   user_id=new_user.id,
+                   email=new_user.email,
+                   role=new_user.role.value)
+
         # TODO: Add background task for welcome email
         # background_tasks.add_task(send_welcome_email, new_user.email)
-        
+
         return RegisterResponse(
             message="Account created successfully",
-            user=user_profile
+            user=user_profile,
+            access_token=tokens["access_token"],
+            refresh_token=tokens["refresh_token"]
         )
         
     except HTTPException:

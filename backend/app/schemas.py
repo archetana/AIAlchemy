@@ -58,11 +58,15 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=255)
     title: Optional[str] = Field(None, max_length=255)
     phone: Optional[str] = Field(None, max_length=50)
+    role: Optional[UserRole] = Field(None, description="User role (defaults to viewer if not provided)")
 
 class RegisterResponse(BaseModel):
     """User registration response"""
     message: str
     user: UserProfile
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
 
 class PasswordChangeRequest(BaseModel):
     """Password change request"""
