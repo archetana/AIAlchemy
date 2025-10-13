@@ -185,13 +185,19 @@ async def register(
         )
         
     except HTTPException:
+        # HTTPExceptions are intentional errors (validation, etc.)
+        # Don't try to rollback as we may not have started a transaction
         raise
     except Exception as e:
+        # Unexpected errors - try to rollback if there's an active transaction
         logger.error("Registration failed", error=str(e))
-        await db.rollback()
+        try:
+            await db.rollback()
+        except Exception as rollback_error:
+            logger.warning("Rollback failed or not needed", error=str(rollback_error))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create account"
+            detail="Failed to create account. Please try again."
         )
 
 @router.post("/login", response_model=LoginResponse)

@@ -58,16 +58,16 @@ class PasswordValidator:
         if self.require_special and not re.search(f"[{re.escape(self.special_chars)}]", password):
             errors.append(f"Password must contain at least one special character: {self.special_chars}")
         
-        # Common password patterns to avoid
-        common_patterns = [
-            r"(.)\1{2,}",  # Repeated characters (aaa, 111)
-            r"(?i)(password|123456|qwerty|admin)",  # Common weak passwords
-            r"^(.+)\1+$",  # Repeated patterns (abcabc)
+        # Common password patterns to avoid (relaxed rules)
+        # Only check for very obvious weak passwords
+        obvious_weak_patterns = [
+            r"^(.)\1+$",  # All same character (aaaaaaaa, 11111111)
+            r"(?i)^(password|123456|qwerty|admin|letmein)$",  # Exact match common weak passwords
         ]
-        
-        for pattern in common_patterns:
+
+        for pattern in obvious_weak_patterns:
             if re.search(pattern, password):
-                errors.append("Password contains common patterns and is not secure")
+                errors.append("Password is too common or simple. Please choose a more unique password.")
                 break
         
         return {

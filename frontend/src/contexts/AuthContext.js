@@ -182,15 +182,15 @@ export const AuthProvider = ({ children }) => {
   // Register function
   const register = async (userData) => {
     dispatch({ type: AUTH_ACTIONS.REGISTER_START });
-    
+
     try {
       const response = await authApi.register(userData);
       const { access_token, refresh_token, user } = response.data;
-      
+
       // Store tokens in localStorage
       localStorage.setItem('authToken', access_token);
       localStorage.setItem('refreshToken', refresh_token);
-      
+
       dispatch({
         type: AUTH_ACTIONS.REGISTER_SUCCESS,
         payload: {
@@ -199,10 +199,26 @@ export const AuthProvider = ({ children }) => {
           refresh_token,
         },
       });
-      
+
       return { success: true };
     } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Registration failed';
+      // Handle different error response formats
+      let errorMessage = 'Registration failed';
+
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+
+        // Handle object with message and errors
+        if (typeof detail === 'object' && detail.message) {
+          errorMessage = detail.message;
+          if (detail.errors && Array.isArray(detail.errors) && detail.errors.length > 0) {
+            errorMessage += ': ' + detail.errors.join(', ');
+          }
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+
       dispatch({
         type: AUTH_ACTIONS.REGISTER_FAILURE,
         payload: errorMessage,

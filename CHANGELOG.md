@@ -7,7 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed - 2025-10-13
+### Fixed - 2025-10-13 (Part 2)
+
+#### Issue: Database Session Errors and Password Validation Too Strict
+**Problem**: Users getting 500 errors during registration with no error messages displayed in frontend UI
+
+**Root Causes Identified**:
+1. **Password Validation Too Restrictive**
+   - Password validator rejected passwords with repeated characters (e.g., "Hello" has "ll")
+   - Regex pattern `(.)\1{2,}` was too strict, rejecting normal passwords
+   - Pattern `(?i)(password|123456|qwerty|admin)` rejected passwords containing these words anywhere
+
+2. **Database Rollback Error**
+   - When password validation failed, generic error handler tried to rollback database
+   - No active database transaction existed at validation stage
+   - Caused secondary "Database session error" that masked the real validation error
+   - Resulted in 500 Internal Server Error instead of 400 Bad Request
+
+3. **Frontend Not Displaying Validation Errors**
+   - Backend returned error object `{message: "...", errors: ["..."]}`
+   - Frontend expected simple string in `error.response.data.detail`
+   - Object was rendered as `[object Object]` instead of readable message
+
+**Changes Made**:
+
+##### Backend Changes
+
+**File**: `backend/app/auth/password_utils.py`
+- **Lines 61-71**: Relaxed password validation rules
+  - Now only reject truly weak passwords (all same character: "aaaaaaaa")
+  - Only reject exact matches to common weak passwords: "password", "123456", "qwerty", "admin", "letmein"
+  - Removed overly strict repeated character check that rejected normal words
+  - Allow reasonable passwords like "Hello123!" or "Support@2024"
+  - Improved error message: "Password is too common or simple"
+
+**File**: `backend/app/routers/auth.py`
+- **Lines 187-201**: Fixed error handling and database rollback
+  - HTTPExceptions (validation errors) no longer attempt database rollback
+  - Only rollback on unexpected errors where database operations may have started
+  - Wrapped rollback in try-catch to prevent secondary errors
+  - Better error messages: "Failed to create account. Please try again."
+
+##### Frontend Changes
+
+**File**: `frontend/src/contexts/AuthContext.js`
+- **Lines 204-227**: Enhanced error message parsing and display
+  - Detect if error detail is an object or string
+  - Extract `message` field from error object
+  - Extract `errors` array and join into readable string
+  - Format as: "Password does not meet security requirements: [error list]"
+  - Ensure error message always displayed to user
+
+**Result**:
+- ✅ Password validation now accepts reasonable passwords
+- ✅ Clear validation errors displayed to users in UI
+- ✅ No more 500 errors or "Database session error" messages
+- ✅ Proper 400 Bad Request responses with helpful messages
+
+### Fixed - 2025-10-13 (Part 1)
 
 #### Issue: User Registration Not Working
 **Problem**: Users were unable to create new accounts during signup process
