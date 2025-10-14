@@ -17,7 +17,7 @@
 - ✅ **Enhanced API endpoints** for NVIDIA NIM status monitoring
 
 ### 📚 Documentation & Testing
-- ✅ **Complete setup guide**: `NVIDIA_NIM_SETUP.md`
+- ✅ **Complete setup guide**: `./NVIDIA_NIM_SETUP.md`
 - ✅ **Comprehensive test script**: `test_nvidia_nim.py`
 - ✅ **Environment configuration** instructions
 - ✅ **Troubleshooting guide** for common issues

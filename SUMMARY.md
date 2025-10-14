@@ -127,15 +127,15 @@ Once both servers are running:
 
 ### Documentation
 - `CHANGELOG.md` - Comprehensive change log
-- `LOCAL_DEVELOPMENT_SETUP.md` - Detailed local dev guide
+- `docs/setup/DEVELOPMENT_SETUP.md` - Detailed local dev guide
 - `QUICK_LOCAL_SETUP.md` - Quick setup instructions
 - `LOCAL_DEV_STATUS.md` - Current status
-- `REGISTRATION_FIX_SUMMARY.md` - Registration fix details
+- `docs/features/REGISTRATION_FIX_SUMMARY.md` - Registration fix details
 - `SUMMARY.md` - This file
 
 ### Scripts
-- `start-local-dev.bat` - Windows startup script
-- `start-local-dev.sh` - Linux/Mac startup script
+- `scripts/shell/start-local-dev.bat` - Windows startup script
+- `scripts/shell/start-local-dev.sh` - Linux/Mac startup script
 - `backend/verify_registration_fix.py` - Verification script
 - `backend/.env` - Local environment config
 
