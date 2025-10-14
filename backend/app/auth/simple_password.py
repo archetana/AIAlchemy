@@ -16,7 +16,7 @@ class SimplePasswordValidator:
     def __init__(self):
         # Password requirements
         self.min_length = 8
-        self.max_length = 128
+        self.max_length = 72  # bcrypt has a 72-byte limit
         self.require_uppercase = True
         self.require_lowercase = True
         self.require_numbers = True
@@ -26,21 +26,24 @@ class SimplePasswordValidator:
     def validate_password(self, password: str) -> Dict[str, any]:
         """
         Validate password against security requirements
-        
+
         Args:
             password: Password string to validate
-            
+
         Returns:
             Dict with 'valid' bool and 'errors' list
         """
         errors = []
-        
+
+        # Check byte length (bcrypt limit is 72 bytes, not characters)
+        password_bytes = password.encode('utf-8')
+
         # Length validation
         if len(password) < self.min_length:
             errors.append(f"Password must be at least {self.min_length} characters long")
-        
-        if len(password) > self.max_length:
-            errors.append(f"Password must not exceed {self.max_length} characters")
+
+        if len(password_bytes) > self.max_length:
+            errors.append(f"Password is too long (exceeds {self.max_length} bytes when encoded)")
         
         # Character requirements
         if self.require_uppercase and not re.search(r"[A-Z]", password):
@@ -82,17 +85,23 @@ class SimplePasswordUtils:
     def hash_password(self, password: str) -> str:
         """
         Hash a password using bcrypt directly
-        
+
         Args:
             password: Plain text password
-            
+
         Returns:
             Hashed password string
         """
         try:
+            # bcrypt has a 72-byte limit, truncate if necessary
+            # This is safe because we validate password length before hashing
+            password_bytes = password.encode('utf-8')
+            if len(password_bytes) > 72:
+                password_bytes = password_bytes[:72]
+
             # Generate salt and hash password
             salt = bcrypt.gensalt(rounds=self.rounds)
-            hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+            hashed = bcrypt.hashpw(password_bytes, salt)
             hashed_str = hashed.decode('utf-8')
             logger.info("Password hashed successfully with simple bcrypt")
             return hashed_str
@@ -103,22 +112,27 @@ class SimplePasswordUtils:
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """
         Verify a password against its hash using bcrypt directly
-        
+
         Args:
             plain_password: Plain text password to verify
             hashed_password: Stored hashed password
-            
+
         Returns:
             True if password matches, False otherwise
         """
         try:
+            # bcrypt has a 72-byte limit, truncate if necessary
+            password_bytes = plain_password.encode('utf-8')
+            if len(password_bytes) > 72:
+                password_bytes = password_bytes[:72]
+
             # Handle both string and bytes inputs
             if isinstance(hashed_password, str):
                 hashed_bytes = hashed_password.encode('utf-8')
             else:
                 hashed_bytes = hashed_password
-            
-            is_valid = bcrypt.checkpw(plain_password.encode('utf-8'), hashed_bytes)
+
+            is_valid = bcrypt.checkpw(password_bytes, hashed_bytes)
             logger.info("Simple password verification completed", valid=is_valid)
             return is_valid
         except Exception as e:

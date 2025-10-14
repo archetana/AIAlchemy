@@ -20,10 +20,15 @@ logger = logging.getLogger(__name__)
 
 class VectorDocumentService:
     """Service for managing document vectors and semantic search"""
-    
+
     def __init__(self):
         self.settings = get_settings()
-        self.supabase = get_supabase_client()
+        # Only initialize Supabase if it's configured to be used
+        if self.settings.should_use_supabase:
+            self.supabase = get_supabase_client()
+        else:
+            self.supabase = None
+            logger.info("Vector document service initialized without Supabase (local development mode)")
         self.model_service = model_service
     
     async def generate_embedding(

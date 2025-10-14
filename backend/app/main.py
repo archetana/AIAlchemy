@@ -18,15 +18,15 @@ from app.auth.auth_middleware import AuthenticationMiddleware, SecurityHeadersMi
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
-    print("🚀 Starting AIAlchemy API server...")
-    
+    print("[START] Starting AIAlchemy API server...")
+
     # Initialize database connection
     try:
-        print("🔧 Connecting to database...")
+        print("[*] Connecting to database...")
         await database_manager.connect()
-        print("✅ Database connected successfully")
+        print("[OK] Database connected successfully")
     except Exception as e:
-        print(f"⚠️ Database connection error: {e}")
+        print(f"[WARNING] Database connection error: {e}")
         import traceback
         traceback.print_exc()
     
@@ -34,23 +34,23 @@ async def lifespan(app: FastAPI):
     try:
         from app.startup_checks import run_startup_checks, force_supabase_mode
         
-        print("🔍 Running startup validation checks...")
-        
+        print("[CHECK] Running startup validation checks...")
+
         # Run all checks
         startup_summary = await run_startup_checks()
-        
+
         # Print detailed results
-        print(f"📊 Startup Check Results:")
+        print(f"[INFO] Startup Check Results:")
         print(f"   Overall Status: {startup_summary['overall_status']}")
         print(f"   Checks Passed: {startup_summary['checks_passed']}/{startup_summary['total_checks']}")
-        
+
         if startup_summary['failed_checks']:
-            print(f"   ❌ Failed Checks:")
+            print(f"   [ERROR] Failed Checks:")
             for check in startup_summary['failed_checks']:
                 print(f"      - {check}")
-        
+
         if startup_summary['warnings']:
-            print(f"   ⚠️ Warnings:")
+            print(f"   [WARNING] Warnings:")
             for warning in startup_summary['warnings']:
                 print(f"      - {warning}")
         
@@ -58,47 +58,47 @@ async def lifespan(app: FastAPI):
         from app.core.config import get_settings
         settings = get_settings()
         
-        if (settings.environment == "production" and 
+        if (settings.environment == "production" and
             any("NOT using Supabase" in check for check in startup_summary['failed_checks'])):
-            print("🔧 Production environment detected with SQLite - forcing Supabase mode...")
+            print("[*] Production environment detected with SQLite - forcing Supabase mode...")
             if force_supabase_mode():
-                print("✅ Supabase mode activated successfully")
+                print("[OK] Supabase mode activated successfully")
             else:
-                print("❌ Failed to activate Supabase mode")
+                print("[ERROR] Failed to activate Supabase mode")
         
         # Initialize database with smart backend selection
         from app.core.database_factory import database_factory
         await database_factory.initialize()
         
         db_info = database_factory.get_database_info()
-        print(f"✅ Database Backend: {db_info['backend']}")
-        
+        print(f"[OK] Database Backend: {db_info['backend']}")
+
         # Initialize schema and data if needed
         if not database_factory.is_using_supabase:
             from app.init_db_unified import init_database
-            print("🔧 Initializing SQLAlchemy schema and data...")
+            print("[*] Initializing SQLAlchemy schema and data...")
             db_success = await init_database()
             if db_success:
-                print("✅ SQLAlchemy database initialized successfully")
+                print("[OK] SQLAlchemy database initialized successfully")
             else:
-                print("⚠️ SQLAlchemy database initialization had issues, but continuing...")
+                print("[WARNING] SQLAlchemy database initialization had issues, but continuing...")
         else:
-            print("📊 Using Supabase - ensure schema is set up in Supabase Dashboard")
-            
+            print("[INFO] Using Supabase - ensure schema is set up in Supabase Dashboard")
+
     except Exception as e:
-        print(f"⚠️ Startup initialization error: {e}")
+        print(f"[WARNING] Startup initialization error: {e}")
         import traceback
         traceback.print_exc()
-    
-    print("📊 AIAlchemy API ready")
+
+    print("[INFO] AIAlchemy API ready")
     yield
     # Shutdown
-    print("🔒 Shutting down AIAlchemy API server...")
+    print("[SHUTDOWN] Shutting down AIAlchemy API server...")
     try:
         await database_manager.disconnect()
-        print("✅ Database disconnected")
+        print("[OK] Database disconnected")
     except Exception as e:
-        print(f"⚠️ Database disconnect error: {e}")
+        print(f"[WARNING] Database disconnect error: {e}")
 
 # Create FastAPI app with large file upload support
 app = FastAPI(

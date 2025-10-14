@@ -26,7 +26,7 @@ class DatabaseService:
             self.supabase = get_supabase_client()
             print(f"🔧 DatabaseService: Using Supabase (URL: {settings.supabase_url[:30]}...)")
         else:
-            print(f"🔧 DatabaseService: Using SQLAlchemy ({settings.database_url})")
+            print(f"[DatabaseService] Using SQLAlchemy ({settings.database_url})")
     
     async def create_startup(
         self, 

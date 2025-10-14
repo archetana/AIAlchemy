@@ -11,23 +11,23 @@ from datetime import datetime
 async def create_tables():
     """Create all database tables"""
     try:
-        print("🔧 Creating database tables...")
+        print("[SETUP] Creating database tables...")
         from app.database import Base, engine
         
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         
-        print("✅ Database tables created successfully")
+        print("[OK] Database tables created successfully")
         return True
     except Exception as e:
-        print(f"❌ Failed to create database tables: {e}")
+        print(f"[ERROR] Failed to create database tables: {e}")
         traceback.print_exc()
         return False
 
 async def add_sample_data():
     """Add sample data to prevent empty table errors"""
     try:
-        print("📊 Adding sample startup data...")
+        print("[DATA] Adding sample startup data...")
         from app.database import async_session_local
         from app.models import StartupApplication, ApplicationStatus, FundingStage, Industry, User, UserRole
         from app.auth.password_utils import hash_password
@@ -40,7 +40,7 @@ async def add_sample_data():
             existing = result.fetchall()
             
             if len(existing) == 0:
-                print("➕ Adding sample industries...")
+                print("[ADD] Adding sample industries...")
                 
                 # First, create sample industries
                 sample_industries = [
@@ -66,7 +66,7 @@ async def add_sample_data():
                 healthtech_industry = await session.execute(select(Industry).where(Industry.name == "HealthTech"))
                 healthtech_industry = healthtech_industry.scalar_one()
                 
-                print("➕ Adding sample startup applications...")
+                print("[ADD] Adding sample startup applications...")
                 
                 sample_apps = [
                     StartupApplication(
@@ -111,10 +111,10 @@ async def add_sample_data():
                     session.add(app)
                 
                 await session.commit()
-                print(f"✅ Added {len(sample_industries)} industries and {len(sample_apps)} startup applications")
+                print(f"[OK] Added {len(sample_industries)} industries and {len(sample_apps)} startup applications")
                 
                 # Add sample users for testing
-                print("👤 Adding sample users...")
+                print("[USER] Adding sample users...")
                 
                 # Pre-computed bcrypt hashes for the passwords (to avoid hashing issues during initialization)
                 # TempPass123! -> $2b$12$...
@@ -126,18 +126,18 @@ async def add_sample_data():
                     test_hash = hash_password("TempPass123!")
                     admin_hash = hash_password("AdminPass123!")
                     analyst_hash = hash_password("AnalystPass123!")
-                    print("✅ Passlib password hashing succeeded")
+                    print("[OK] Passlib password hashing succeeded")
                 except Exception as e:
-                    print(f"⚠️ Passlib password hashing failed: {e}")
+                    print(f"[WARN] Passlib password hashing failed: {e}")
                     try:
                         # Method 2: Try simple bcrypt hashing (fallback 1)
                         test_hash = simple_hash_password("TempPass123!")
                         admin_hash = simple_hash_password("AdminPass123!")
                         analyst_hash = simple_hash_password("AnalystPass123!")
-                        print("✅ Simple bcrypt password hashing succeeded")
+                        print("[OK] Simple bcrypt password hashing succeeded")
                     except Exception as e2:
-                        print(f"⚠️ Simple bcrypt hashing failed: {e2}")
-                        print("📝 Using pre-computed password hashes...")
+                        print(f"[WARN] Simple bcrypt hashing failed: {e2}")
+                        print("[INFO] Using pre-computed password hashes...")
                         # Method 3: Fallback to pre-computed bcrypt hashes
                         test_hash = "$2b$12$GTk9o8lRDFkk/L9vX5eEJuOXJipjip8O3wLNVCZRTvgi3vglQEdB."      # TempPass123!
                         admin_hash = "$2b$12$lfrH40i51jeIEthx5xdnauon1EVQYlAe2Bd2L8BdbxTOIioEsgKUG"     # AdminPass123!
@@ -174,22 +174,22 @@ async def add_sample_data():
                     session.add(user)
                     
                 await session.commit()
-                print(f"✅ Added {len(sample_users)} sample users")
+                print(f"[OK] Added {len(sample_users)} sample users")
                 
             else:
-                print(f"ℹ️ Database already has {len(existing)} startup applications")
+                print(f"[INFO] Database already has {len(existing)} startup applications")
                 
         return True
                 
     except Exception as e:
-        print(f"❌ Failed to add sample data: {e}")
+        print(f"[ERROR] Failed to add sample data: {e}")
         traceback.print_exc()
         return False
 
 async def verify_tables():
     """Verify that tables exist and have data"""
     try:
-        print("🔍 Verifying database tables...")
+        print("[VERIFY] Verifying database tables...")
         from app.database import async_session_local
         from sqlalchemy import text
         
@@ -199,18 +199,18 @@ async def verify_tables():
                 text("SELECT COUNT(*) FROM startup_applications")
             )
             count = result.scalar()
-            print(f"📊 Found {count} startup applications in database")
+            print(f"[DATA] Found {count} startup applications in database")
             return count > 0
             
     except Exception as e:
-        print(f"❌ Failed to verify tables: {e}")
+        print(f"[ERROR] Failed to verify tables: {e}")
         traceback.print_exc()
         return False
 
 async def initialize_file_storage():
     """Initialize file storage directories"""
     try:
-        print("📁 Initializing file storage...")
+        print("[STORAGE] Initializing file storage...")
         import os
         from pathlib import Path
         
@@ -222,27 +222,27 @@ async def initialize_file_storage():
         for file_type in ['pitch_deck', 'financial_docs', 'team_info', 'legal_docs', 'media']:
             (upload_base / file_type).mkdir(exist_ok=True)
         
-        print(f"✅ File storage initialized at: {upload_base.absolute()}")
+        print(f"[OK] File storage initialized at: {upload_base.absolute()}")
         return True
         
     except Exception as e:
-        print(f"⚠️ File storage initialization failed: {e}")
+        print(f"[WARN] File storage initialization failed: {e}")
         return False
 
 async def init_database():
     """Initialize database with tables and sample data"""
     try:
-        print("🚀 Starting database initialization...")
+        print("[START] Starting database initialization...")
         
         # Step 1: Create tables
         tables_created = await create_tables()
         if not tables_created:
-            print("⚠️ Table creation failed, but continuing...")
+            print("[WARN] Table creation failed, but continuing...")
         
         # Step 2: Add sample data
         data_added = await add_sample_data()
         if not data_added:
-            print("⚠️ Sample data addition failed, but continuing...")
+            print("[WARN] Sample data addition failed, but continuing...")
         
         # Step 3: Initialize file upload directories
         await initialize_file_storage()
@@ -251,14 +251,14 @@ async def init_database():
         verified = await verify_tables()
         
         if verified:
-            print("✅ Database initialization completed successfully!")
+            print("[OK] Database initialization completed successfully!")
             return True
         else:
-            print("⚠️ Database initialization completed with warnings")
+            print("[WARN] Database initialization completed with warnings")
             return False
         
     except Exception as e:
-        print(f"❌ Database initialization failed: {e}")
+        print(f"[ERROR] Database initialization failed: {e}")
         traceback.print_exc()
         return False
 
