@@ -177,8 +177,8 @@ async def get_throughput_metrics(
 @router.put("/applications/{startup_id}/status")
 async def update_application_status(
     startup_id: int,
-    new_status: ApplicationStatus,
-    notes: Optional[str] = None,
+    new_status: ApplicationStatus = Query(..., description="New application status"),
+    notes: Optional[str] = Query(None, description="Optional notes about the status change"),
     db: AsyncSession = Depends(get_db)
 ):
     """

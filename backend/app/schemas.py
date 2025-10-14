@@ -138,22 +138,27 @@ class Founder(FounderBase):
 
 # File Upload Schemas
 class UploadedFileBase(BaseModel):
-    filename: str
     original_filename: str
-    file_type: str
-    file_size: Optional[int] = None
-    mime_type: Optional[str] = None
+    stored_filename: str
+    file_type: Optional[str] = None
+    content_type: str
+    file_size: int
 
 class UploadedFile(UploadedFileBase):
-    id: int
+    id: str  # UUID
     startup_application_id: int
-    file_path: Optional[str] = None
-    status: FileStatus
+    file_path: str
+    relative_path: Optional[str] = None
+    storage_backend: str = 'local'
+    is_processed: bool = False
     processing_progress: int = 0
-    extraction_metadata: Optional[Dict[str, Any]] = None
-    uploaded_at: datetime
+    description: Optional[str] = None
+    metadata_json: Optional[Dict[str, Any]] = None
+    is_safe: bool = True
+    upload_timestamp: datetime
     processed_at: Optional[datetime] = None
-    
+    last_accessed_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
 

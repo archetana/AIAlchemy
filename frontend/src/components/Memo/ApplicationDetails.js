@@ -109,18 +109,20 @@ const ApplicationDetails = ({ application }) => {
           )}
 
           <Box display="flex" gap={1} mt={1} flexWrap="wrap">
-            <Chip
-              size="small"
-              label={application.industry}
-              sx={{
-                backgroundColor: '#f0f9ff',
-                color: '#0369a1',
-              }}
-            />
+            {application.industry && (
+              <Chip
+                size="small"
+                label={typeof application.industry === 'string' ? application.industry : application.industry.name}
+                sx={{
+                  backgroundColor: '#f0f9ff',
+                  color: '#0369a1',
+                }}
+              />
+            )}
             {application.funding_stage && (
               <Chip
                 size="small"
-                label={application.funding_stage}
+                label={typeof application.funding_stage === 'string' ? application.funding_stage : application.funding_stage.value || application.funding_stage}
                 sx={{
                   backgroundColor: `${getFundingStageColor(application.funding_stage)}20`,
                   color: getFundingStageColor(application.funding_stage),

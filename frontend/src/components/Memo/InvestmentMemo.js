@@ -90,13 +90,16 @@ const InvestmentMemo = () => {
         startupsApi.getStartup(applicationId),
         uploadsApi.getStartupFiles(applicationId).catch(() => ({ data: [] }))
       ]);
-      
+
+      // Backend returns data directly for getStartup, not wrapped in data property
       if (appResponse.data) {
         setApplication(appResponse.data);
       }
-      
+
       if (filesResponse.data) {
-        setFiles(Array.isArray(filesResponse.data) ? filesResponse.data : []);
+        // Backend returns {success: true, files: [...]}
+        const filesList = filesResponse.data.files || filesResponse.data;
+        setFiles(Array.isArray(filesList) ? filesList : []);
       }
       
       // Try to fetch existing memo
@@ -116,52 +119,9 @@ const InvestmentMemo = () => {
       console.error('Data fetch error:', err);
       const errorInfo = apiUtils.handleError(err);
       setError(`Failed to load application: ${errorInfo.message}`);
-      
-      // Set fallback data for development
-      const fallbackApplication = {
-        id: parseInt(applicationId),
-        company_name: 'TechFlow AI',
-        website: 'https://techflow.ai',
-        contact_name: 'Sarah Chen',
-        contact_email: 'sarah@techflow.ai',
-        contact_phone: '+1 (555) 123-4567',
-        industry: 'AI/ML',
-        funding_stage: 'Series A',
-        funding_amount_requested: 5000000,
-        current_arr: 1200000,
-        gross_margin: 75.5,
-        runway_months: 18,
-        status: 'manual_review',
-        ai_score: 83.08,
-        manual_score: null,
-        final_rating: null,
-        assigned_analyst_id: 1,
-        processing_notes: 'Strong technical team with proven AI expertise',
-        created_at: '2025-01-20T10:30:00Z',
-        updated_at: '2025-01-20T14:45:00Z'
-      };
-      
-      setApplication(fallbackApplication);
-      setFiles([
-        {
-          id: 1,
-          filename: 'pitch_deck.pdf',
-          original_filename: 'TechFlow AI - Series A Pitch Deck.pdf',
-          file_type: 'pitch_deck',
-          file_size: 2456789,
-          mime_type: 'application/pdf',
-          uploaded_at: '2025-01-20T10:35:00Z'
-        },
-        {
-          id: 2,
-          filename: 'financial_model.xlsx',
-          original_filename: 'TechFlow Financial Model 2024-2026.xlsx',
-          file_type: 'financial',
-          file_size: 987654,
-          mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          uploaded_at: '2025-01-20T11:20:00Z'
-        }
-      ]);
+      // Don't set fallback data - let the error state show
+      setApplication(null);
+      setFiles([]);
     } finally {
       setLoading(false);
     }
@@ -347,7 +307,7 @@ const InvestmentMemo = () => {
                     }}
                   />
                   <Typography variant="body2" color="text.secondary">
-                    {application.funding_stage} • {application.industry}
+                    {typeof application.funding_stage === 'string' ? application.funding_stage : application.funding_stage?.value || 'N/A'} • {typeof application.industry === 'string' ? application.industry : application.industry?.name || 'N/A'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     AI Score: {application.ai_score?.toFixed(1)}%

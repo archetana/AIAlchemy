@@ -108,8 +108,9 @@ const FilesList = ({ files, applicationId, onFilesUpdate }) => {
     }
   };
 
-  const handleView = (fileId) => {
-    // Open file in new tab for viewing
+  const handleView = (file) => {
+    // Open file in new tab for viewing - use file_id or id
+    const fileId = file.file_id || file.id;
     window.open(`/api/uploads/files/${fileId}`, '_blank');
   };
 
@@ -179,9 +180,9 @@ const FilesList = ({ files, applicationId, onFilesUpdate }) => {
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 40 }}>
-                    {getFileIcon(file.mime_type)}
+                    {getFileIcon(file.content_type || file.mime_type)}
                   </ListItemIcon>
-                  
+
                   <ListItemText
                     primary={
                       <Box>
@@ -197,9 +198,9 @@ const FilesList = ({ files, applicationId, onFilesUpdate }) => {
                       </Box>
                     }
                     secondary={
-                      file.uploaded_at && (
+                      (file.upload_timestamp || file.uploaded_at) && (
                         <Typography variant="caption" color="text.secondary">
-                          Uploaded {new Date(file.uploaded_at).toLocaleDateString()}
+                          Uploaded {new Date(file.upload_timestamp || file.uploaded_at).toLocaleDateString()}
                         </Typography>
                       )
                     }
@@ -208,9 +209,9 @@ const FilesList = ({ files, applicationId, onFilesUpdate }) => {
                   <ListItemSecondaryAction>
                     <Box display="flex" gap={0.5}>
                       <Tooltip title="View File">
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleView(file.id)}
+                        <IconButton
+                          size="small"
+                          onClick={() => handleView(file)}
                         >
                           <ViewIcon fontSize="small" />
                         </IconButton>

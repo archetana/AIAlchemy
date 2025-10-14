@@ -257,10 +257,15 @@ const Upload = ({ editMode = false, applicationId = null }) => {
     loadIndustries();
   }, []);
 
-  // Funding stage options
+  // Funding stage options - mapped to backend enum values
   const fundingStages = [
-    'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C', 'Series D+', 
-    'Growth/Late Stage', 'Bridge Funding', 'Convertible Note'
+    { label: 'Pre-Seed', value: 'pre_seed' },
+    { label: 'Seed', value: 'seed' },
+    { label: 'Series A', value: 'series_a' },
+    { label: 'Series B', value: 'series_b' },
+    { label: 'Series C', value: 'series_c' },
+    { label: 'Series D+', value: 'series_d_plus' },
+    { label: 'Growth/Late Stage', value: 'growth' },
   ];
 
   // Handle form field updates
@@ -328,17 +333,15 @@ const Upload = ({ editMode = false, applicationId = null }) => {
               : f
           ));
           
-          const response = await uploadsApi.uploadFile(formData, {
-            onUploadProgress: (progressEvent) => {
-              const progress = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total
-              );
-              setFiles(prev => prev.map(f => 
-                f.id === fileData.id 
-                  ? { ...f, progress }
-                  : f
-              ));
-            },
+          const response = await uploadsApi.uploadFile(formData, (progressEvent) => {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setFiles(prev => prev.map(f =>
+              f.id === fileData.id
+                ? { ...f, progress }
+                : f
+            ));
           });
           
           if (response.data) {
@@ -632,8 +635,8 @@ const Upload = ({ editMode = false, applicationId = null }) => {
                       required
                     >
                       {fundingStages.map(stage => (
-                        <MenuItem key={stage} value={stage}>
-                          {stage}
+                        <MenuItem key={stage.value} value={stage.value}>
+                          {stage.label}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -963,7 +966,7 @@ const Upload = ({ editMode = false, applicationId = null }) => {
                       </Typography>
                       <Typography variant="body2"><strong>Name:</strong> {formData.company_name}</Typography>
                       <Typography variant="body2"><strong>Industry:</strong> {industries.find(i => i.id === parseInt(formData.industry_id))?.name || 'Not selected'}</Typography>
-                      <Typography variant="body2"><strong>Stage:</strong> {formData.funding_stage}</Typography>
+                      <Typography variant="body2"><strong>Stage:</strong> {fundingStages.find(s => s.value === formData.funding_stage)?.label || formData.funding_stage}</Typography>
                       <Typography variant="body2"><strong>Contact:</strong> {formData.contact_name} ({formData.contact_email})</Typography>
                     </Paper>
                   </Grid>

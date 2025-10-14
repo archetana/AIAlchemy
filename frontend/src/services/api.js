@@ -136,9 +136,9 @@ export const pipelineApi = {
   getThroughput: (days = 30) => api.get('/pipeline/throughput', { params: { days } }),
   
   // Update application status
-  updateStatus: (startupId, newStatus, notes = '') => 
-    api.put(`/pipeline/applications/${startupId}/status`, newStatus, {
-      params: { notes }
+  updateStatus: (startupId, newStatus, notes = '') =>
+    api.put(`/pipeline/applications/${startupId}/status`, null, {
+      params: { new_status: newStatus, notes }
     }),
 };
 
