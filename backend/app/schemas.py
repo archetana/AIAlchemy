@@ -54,7 +54,7 @@ class RefreshTokenResponse(BaseModel):
 class RegisterRequest(BaseModel):
     """User registration request"""
     email: EmailStr
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=8, max_length=128)  # Argon2 supports longer passwords
     full_name: str = Field(..., min_length=1, max_length=255)
     title: Optional[str] = Field(None, max_length=255)
     phone: Optional[str] = Field(None, max_length=50)
@@ -71,7 +71,7 @@ class RegisterResponse(BaseModel):
 class PasswordChangeRequest(BaseModel):
     """Password change request"""
     current_password: str
-    new_password: str = Field(..., min_length=8, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)  # Argon2 supports longer passwords
 
 class PasswordResetRequest(BaseModel):
     """Password reset request"""
@@ -86,7 +86,7 @@ class UserBase(BaseModel):
     role: UserRole = UserRole.ANALYST
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=8, max_length=128)  # Argon2 supports longer passwords
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
